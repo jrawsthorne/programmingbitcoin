@@ -1,6 +1,7 @@
 # programmingbitcoin
 
 [![Build Status](https://travis-ci.com/jrawsthorne/programmingbitcoin.svg?branch=master)](https://travis-ci.com/jrawsthorne/programmingbitcoin)
+[![codecov](https://codecov.io/gh/jrawsthorne/programmingbitcoin/branch/master/graph/badge.svg)](https://codecov.io/gh/jrawsthorne/programmingbitcoin)
 
 A NodeJS implementation of the code from Jimmy Song's Programming Bitcoin book.
 
