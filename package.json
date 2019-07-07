@@ -1,0 +1,27 @@
+{
+  "name": "programmingbitcoin",
+  "version": "0.1.0",
+  "description": "A NodeJS implementation of the code from Jimmy Songs's Programming Bitcoin book.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jrawsthorne/programmingbitcoin"
+  },
+  "author": {
+    "name": "Jake Rawsthorne"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node-dev --respawn src/index.ts",
+    "test": "jest"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/jest": "^24.0.15",
+    "@types/node": "^12.0.12",
+    "jest": "^24.8.0",
+    "ts-jest": "^24.0.2",
+    "ts-node-dev": "^1.0.0-pre.40",
+    "typescript": "^3.5.2"
+  }
+}
