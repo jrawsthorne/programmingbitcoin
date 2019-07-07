@@ -1,4 +1,4 @@
-import { NetworkEnvelope } from "../network";
+import { NetworkEnvelope, VersionMessage } from "../network";
 
 test("parses network envelope", () => {
   let msg = Buffer.from(
@@ -30,4 +30,11 @@ test("serializes network envelope", () => {
   );
   envelope = NetworkEnvelope.parse(msg);
   expect(envelope.serialize()).toEqual(msg);
+});
+
+test("serializes version message", () => {
+  const v = new VersionMessage({ timestamp: 0, nonce: Buffer.alloc(8) });
+  expect(v.serialize().toString("hex")).toEqual(
+    "7f11010000000000000000000000000000000000000000000000000000000000000000000000ffff00000000208d000000000000000000000000000000000000ffff00000000208d0000000000000000182f70726f6772616d6d696e67626974636f696e3a302e312f0000000000"
+  );
 });

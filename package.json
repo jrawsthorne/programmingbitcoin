@@ -13,13 +13,16 @@
   "scripts": {
     "build": "tsc",
     "start": "ts-node-dev --respawn src/index.ts",
-    "test": "jest && codecov"
+    "test": "jest && codecov",
+    "test:dev": "jest"
   },
   "dependencies": {
+    "bignum": "^0.13.0",
     "hash.js": "^1.1.7",
     "smart-buffer": "^4.0.2"
   },
   "devDependencies": {
+    "@types/bignum": "^0.0.29",
     "@types/jest": "^24.0.15",
     "@types/node": "^12.0.12",
     "codecov": "^3.5.0",

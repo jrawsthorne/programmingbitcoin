@@ -2,7 +2,13 @@ const NETWORK_MAGIC = Buffer.from("f9beb4d9", "hex");
 const TESTNET_NETWORK_MAGIC = Buffer.from("0b110907", "hex");
 
 import { SmartBuffer } from "smart-buffer";
-import { hash256 } from "../helper";
+import {
+  hash256,
+  randInt,
+  u64ToEndian,
+  toIPFormat,
+  encodeVarint
+} from "../helper";
 
 export class NetworkEnvelope {
   public magic: Buffer;
@@ -54,6 +60,90 @@ export class NetworkEnvelope {
 
   toString = (): string => {
     return `${this.command.toString("ascii")} ${this.payload.toString("hex")}`;
+  };
+}
+
+export interface VersionMessageParams {
+  version?: number;
+  services?: number;
+  timestamp?: number;
+  receiverServices?: number;
+  receiverIp?: Buffer;
+  receiverPort?: number;
+  senderServices?: number;
+  senderIp?: Buffer;
+  senderPort?: number;
+  nonce?: Buffer;
+  userAgent?: string;
+  latestBlock?: number;
+  relay?: boolean;
+}
+
+export class VersionMessage {
+  public static readonly command = Buffer.from("version");
+  version: number;
+  services: number;
+  timestamp: number;
+  receiverServices: number;
+  receiverIp: Buffer;
+  receiverPort: number;
+  senderServices: number;
+  senderIp: Buffer;
+  senderPort: number;
+  nonce: Buffer;
+  userAgent: string;
+  latestBlock: number;
+  relay: boolean;
+  constructor({
+    version = 70015,
+    services = 0,
+    timestamp = Math.floor(Date.now() / 1000),
+    receiverServices = 0,
+    receiverIp = Buffer.alloc(4),
+    receiverPort = 8333,
+    senderServices = 0,
+    senderIp = Buffer.alloc(4),
+    senderPort = 8333,
+    // randomly generated 8 byte nonce
+    nonce = u64ToEndian(randInt(Math.pow(2, 64))),
+    userAgent = "/programmingbitcoin:0.1/",
+    latestBlock = 0,
+    relay = false
+  }: VersionMessageParams = {}) {
+    this.version = version;
+    this.services = services;
+    this.timestamp = timestamp;
+    this.receiverServices = receiverServices;
+    this.receiverIp = receiverIp;
+    this.receiverPort = receiverPort;
+    this.senderServices = senderServices;
+    this.senderIp = senderIp;
+    this.senderPort = senderPort;
+    this.nonce = nonce;
+    this.userAgent = userAgent;
+    this.latestBlock = latestBlock;
+    this.relay = relay;
+  }
+
+  serialize = (): Buffer => {
+    const s = new SmartBuffer();
+
+    s.writeUInt32LE(this.version);
+    s.writeBuffer(u64ToEndian(this.services));
+    s.writeBuffer(u64ToEndian(this.timestamp));
+    s.writeBuffer(u64ToEndian(this.receiverServices));
+    s.writeBuffer(toIPFormat(this.receiverIp));
+    s.writeUInt16BE(this.receiverPort);
+    s.writeBuffer(u64ToEndian(this.senderServices));
+    s.writeBuffer(toIPFormat(this.senderIp));
+    s.writeUInt16BE(this.senderPort);
+    s.writeBuffer(this.nonce);
+    s.writeBuffer(encodeVarint(this.userAgent.length));
+    s.writeString(this.userAgent);
+    s.writeUInt32LE(this.latestBlock);
+    s.writeUInt8(this.relay ? 1 : 0);
+
+    return s.toBuffer();
   };
 }
 
