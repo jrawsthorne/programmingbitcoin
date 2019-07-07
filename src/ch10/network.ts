@@ -24,11 +24,7 @@ export class NetworkEnvelope {
     }
     const expectedMagic = testnet ? TESTNET_NETWORK_MAGIC : NETWORK_MAGIC;
     if (!magic.equals(expectedMagic)) {
-      throw new Error(
-        `Magic is not right ${magic.toString(
-          "hex"
-        )} vs ${expectedMagic.toString("hex")}`
-      );
+      throw new UnexpectedNetworkMagic(expectedMagic, magic);
     }
     // Remove padded 0s from command
     const command = Buffer.from(s.readBuffer(12).filter(byte => byte > 0x00));
@@ -37,11 +33,7 @@ export class NetworkEnvelope {
     const payload = s.readBuffer(payloadLength);
     const caclculatedChecksum = hash256(payload).slice(0, 4);
     if (!caclculatedChecksum.equals(checksum)) {
-      throw new Error(
-        `Checksum does not match ${checksum.toString(
-          "hex"
-        )} vs ${caclculatedChecksum.toString("hex")}`
-      );
+      throw new InvalidChecksum(checksum, caclculatedChecksum);
     }
     return new NetworkEnvelope(command, payload, testnet);
   };
@@ -63,4 +55,28 @@ export class NetworkEnvelope {
   toString = (): string => {
     return `${this.command.toString("ascii")} ${this.payload.toString("hex")}`;
   };
+}
+
+export class UnexpectedNetworkMagic extends Error {
+  constructor(expected: Buffer, actual: Buffer) {
+    super(
+      `Magic is not right ${expected.toString("hex")} vs ${actual.toString(
+        "hex"
+      )}`
+    );
+    this.name = this.constructor.name;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+export class InvalidChecksum extends Error {
+  constructor(expected: Buffer, actual: Buffer) {
+    super(
+      `Checksum does not match ${expected.toString("hex")} vs ${actual.toString(
+        "hex"
+      )}`
+    );
+    this.name = this.constructor.name;
+    Error.captureStackTrace(this, this.constructor);
+  }
 }
