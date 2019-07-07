@@ -1,6 +1,6 @@
 # programmingbitcoin
 
-A NodeJS implementation of the code from Jimmy Songs's Programming Bitcoin book.
+A NodeJS implementation of the code from Jimmy Song's Programming Bitcoin book.
 
 [https://github.com/jimmysong/programmingbitcoin](https://github.com/jimmysong/programmingbitcoin)
 
