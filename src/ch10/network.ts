@@ -46,6 +46,20 @@ export class NetworkEnvelope {
     return new NetworkEnvelope(command, payload, testnet);
   };
 
+  serialize = (): Buffer => {
+    const s = new SmartBuffer();
+
+    s.writeBuffer(this.magic);
+    s.writeBuffer(this.command);
+    // Pad to 12 bytes with 0s
+    s.writeBuffer(Buffer.alloc(12 - this.command.length));
+    s.writeUInt32LE(this.payload.length);
+    s.writeBuffer(hash256(this.payload).slice(0, 4));
+    s.writeBuffer(this.payload);
+
+    return s.toBuffer();
+  };
+
   toString = (): string => {
     return `${this.command.toString("ascii")} ${this.payload.toString("hex")}`;
   };
