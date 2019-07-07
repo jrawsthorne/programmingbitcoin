@@ -74,7 +74,7 @@ export interface VersionMessageParams {
   senderIp?: Buffer;
   senderPort?: number;
   nonce?: Buffer;
-  userAgent?: string;
+  userAgent?: Buffer;
   latestBlock?: number;
   relay?: boolean;
 }
@@ -91,7 +91,7 @@ export class VersionMessage {
   senderIp: Buffer;
   senderPort: number;
   nonce: Buffer;
-  userAgent: string;
+  userAgent: Buffer;
   latestBlock: number;
   relay: boolean;
   constructor({
@@ -106,7 +106,7 @@ export class VersionMessage {
     senderPort = 8333,
     // randomly generated 8 byte nonce
     nonce = u64ToEndian(randInt(Math.pow(2, 64))),
-    userAgent = "/programmingbitcoin:0.1/",
+    userAgent = Buffer.from("/programmingbitcoin:0.1/"),
     latestBlock = 0,
     relay = false
   }: VersionMessageParams = {}) {
@@ -139,7 +139,7 @@ export class VersionMessage {
     s.writeUInt16BE(this.senderPort);
     s.writeBuffer(this.nonce);
     s.writeBuffer(encodeVarint(this.userAgent.length));
-    s.writeString(this.userAgent);
+    s.writeBuffer(this.userAgent);
     s.writeUInt32LE(this.latestBlock);
     s.writeUInt8(this.relay ? 1 : 0);
 
