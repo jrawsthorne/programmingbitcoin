@@ -59,7 +59,9 @@ export class NetworkEnvelope {
   };
 
   toString = (): string => {
-    return `${this.command.toString("ascii")} ${this.payload.toString("hex")}`;
+    return `${this.command.toString("ascii")}${" ".repeat(
+      12 - this.command.length
+    )} ${this.payload.toString("hex")}`;
   };
 }
 
