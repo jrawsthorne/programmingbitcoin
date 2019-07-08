@@ -27,7 +27,7 @@ export class NetworkEnvelope {
   static parse = (b: Buffer, testnet = false): NetworkEnvelope => {
     const s = SmartBuffer.fromBuffer(b);
     const magic = s.readBuffer(4);
-    if (magic === Buffer.from([])) {
+    if (magic.equals(Buffer.from([]))) {
       throw Error("Connection reset!");
     }
     const expectedMagic = testnet ? TESTNET_NETWORK_MAGIC : NETWORK_MAGIC;

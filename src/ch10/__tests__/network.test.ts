@@ -2,7 +2,11 @@ import {
   NetworkEnvelope,
   VersionMessage,
   SimpleNode,
-  GetHeadersMessage
+  GetHeadersMessage,
+  UnexpectedNetworkMagic,
+  InvalidChecksum,
+  PingMessage,
+  PongMessage
 } from "../network";
 
 import dotenv from "dotenv";
@@ -26,6 +30,17 @@ test("parses network envelope", () => {
   envelope = NetworkEnvelope.parse(msg);
   expect(envelope.command).toEqual(Buffer.from("version"));
   expect(envelope.payload).toEqual(msg.slice(24));
+  expect(() =>
+    NetworkEnvelope.parse(Buffer.from("0fa6b4a3", "hex"))
+  ).toThrowError(UnexpectedNetworkMagic);
+  expect(() =>
+    NetworkEnvelope.parse(
+      Buffer.from("f9beb4d97667261636b000000000000000000005df6e0e2", "hex")
+    )
+  ).toThrowError(InvalidChecksum);
+  expect(() => NetworkEnvelope.parse(Buffer.from([]))).toThrowError(
+    "Connection reset!"
+  );
 });
 
 test("serializes network envelope", () => {
@@ -51,13 +66,27 @@ test("serializes version message", () => {
 });
 
 // TODO: Mock
-test("handshake", async done => {
+test("handshake", done => {
   const node = new SimpleNode(
     process.env.BITCOIND_HOST || "localhost",
     process.env.BITCOIND_PORT ? parseInt(process.env.BITCOIND_PORT) : undefined
   );
-  await node.handshake();
-  node.socket.end(done); // close socket before test ends
+  node.socket.on("connect", async () => {
+    await node.handshake();
+    await new Promise(resolve => {
+      node.es.once("pingMessage", resolve);
+    });
+    const ping = new PingMessage();
+    node.send(ping);
+    await new Promise(resolve => {
+      node.es.once("pongMessage", (message: NetworkEnvelope) => {
+        expect(PongMessage.parse(message.payload).nonce).toEqual(ping.nonce);
+        resolve();
+      });
+    });
+    // close socket before test ends
+    node.socket.end(done);
+  });
 });
 
 test("serializes getheaders message", () => {
