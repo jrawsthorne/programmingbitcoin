@@ -9,6 +9,8 @@ import {
   toIPFormat,
   encodeVarint
 } from "../helper";
+import { Socket } from "net";
+import { EventEmitter } from "events";
 
 export class NetworkEnvelope {
   public magic: Buffer;
@@ -196,6 +198,175 @@ export class PingMessage {
   serialize = (): Buffer => this.nonce;
 
   getCommand = (): Buffer => PingMessage.command;
+}
+
+export type NetworkMessage =
+  | VersionMessage
+  | VerAckMessage
+  | PingMessage
+  | PongMessage
+  | GetHeadersMessage;
+
+export class SimpleNode {
+  socket: Socket;
+  es = new EventEmitter();
+  private data = SmartBuffer.fromSize(1024 * 1024 * 10);
+
+  constructor(
+    host: string,
+    port?: number,
+    public testnet: boolean = false,
+    public logging: boolean = false
+  ) {
+    if (port === undefined) {
+      port = testnet ? 18333 : 8333;
+    }
+    this.socket = new Socket();
+    if (this.logging) console.log(`Connecting to ${host}:${port}`);
+    this.socket.connect({
+      host,
+      port
+    });
+    if (this.logging) {
+      this.socket.on("connect", () => {
+        console.log(`Connected to ${host}:${port}`);
+      });
+    }
+
+    this.listen();
+  }
+
+  // listens for new network messages from a tcp socket
+  listen = () => {
+    const MAGIC = this.testnet ? TESTNET_NETWORK_MAGIC : NETWORK_MAGIC;
+
+    this.socket.on("data", (data: Buffer) => {
+      this.data.writeBuffer(data);
+
+      // keep reading the buffer until we reach the end
+      while (this.data.writeOffset > this.data.readOffset) {
+        // first 4 bytes are expected to be the network magic
+        const magic = this.data.readBuffer(4);
+
+        if (magic.equals(MAGIC)) {
+          // skip over the command
+          this.data.readOffset += 12;
+
+          // next 4 bytes are expected to be the payload length
+          const payloadLength = this.data.readUInt32LE();
+
+          // skip over the checksum
+          this.data.readOffset += 4;
+
+          // if the buffer contains enough data to read the payload
+          if (this.data.writeOffset - this.data.readOffset >= payloadLength) {
+            // move back to beginning of message
+            this.data.readOffset -= 24;
+
+            // read full message (magic, command, payload length, checksum and payload)
+            const message = this.data.readBuffer(payloadLength + 24);
+
+            try {
+              const envelope = NetworkEnvelope.parse(message);
+              if (this.logging) {
+                console.log(`Receive: ${envelope.toString()}`);
+              }
+              this.handleMessage(envelope);
+              this.es.emit(
+                `${envelope.command.toString("ascii")}Message`,
+                envelope
+              );
+            } catch {}
+          } else {
+            // not received full message so skip to beginning
+            // of message and wait for more data
+            this.data.readOffset -= 24;
+            break;
+          }
+        } else {
+          // skip to next byte if network magic wasn't found
+          this.data.readOffset -= magic.length - 1;
+        }
+      }
+    });
+  };
+
+  handleMessage = (message: NetworkEnvelope): void => {
+    switch (message.command.toString("ascii")) {
+      // send back verack if we receive version
+      case VersionMessage.command.toString("ascii"):
+        this.send(new VerAckMessage());
+        break;
+      // send back pong with same nonce if we receive ping
+      case PingMessage.command.toString("ascii"):
+        const nonce = PingMessage.parse(message.payload).nonce;
+        this.send(new PongMessage(nonce));
+        break;
+      default:
+    }
+  };
+
+  // handshake sends version and expects verack
+  handshake = async (): Promise<void> => {
+    return new Promise(resolve => {
+      const version = new VersionMessage();
+      this.send(version);
+      this.es.once("verackMessage", resolve);
+    });
+  };
+
+  send = (message: NetworkMessage): void => {
+    const envelope = new NetworkEnvelope(
+      message.getCommand(),
+      message.serialize(),
+      this.testnet
+    );
+
+    if (this.logging) {
+      console.log(`Sending: ${envelope.toString()}`);
+    }
+    this.socket.write(envelope.serialize());
+  };
+}
+
+interface GetHeadersMessageParams {
+  version?: number;
+  numHashes?: number;
+  startBlock: Buffer;
+  endBlock?: Buffer;
+}
+
+export class GetHeadersMessage {
+  public static readonly command = Buffer.from("getheaders");
+  version: number;
+  numHashes: number;
+  startBlock: Buffer;
+  endBlock: Buffer;
+
+  constructor({
+    version = 70015,
+    numHashes = 1,
+    endBlock,
+    startBlock
+  }: GetHeadersMessageParams) {
+    this.version = version;
+    this.numHashes = numHashes;
+    this.endBlock = endBlock || Buffer.alloc(32, 0x00);
+    this.startBlock = startBlock;
+  }
+
+  public serialize = (): Buffer => {
+    const s = new SmartBuffer();
+
+    s.writeUInt32LE(this.version);
+    s.writeUInt8(1);
+    s.writeBuffer(this.startBlock.reverse());
+    s.writeBuffer(this.endBlock.reverse());
+
+    return s.toBuffer();
+  };
+
+  getCommand = (): Buffer => GetHeadersMessage.command;
 }
 
 export class UnexpectedNetworkMagic extends Error {

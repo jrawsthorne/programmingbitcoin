@@ -1,4 +1,15 @@
-import { NetworkEnvelope, VersionMessage } from "../network";
+import {
+  NetworkEnvelope,
+  VersionMessage,
+  SimpleNode,
+  GetHeadersMessage
+} from "../network";
+
+import dotenv from "dotenv";
+
+beforeAll(() => {
+  dotenv.config();
+});
 
 test("parses network envelope", () => {
   let msg = Buffer.from(
@@ -36,5 +47,28 @@ test("serializes version message", () => {
   const v = new VersionMessage({ timestamp: 0, nonce: Buffer.alloc(8) });
   expect(v.serialize().toString("hex")).toEqual(
     "7f11010000000000000000000000000000000000000000000000000000000000000000000000ffff00000000208d000000000000000000000000000000000000ffff00000000208d0000000000000000182f70726f6772616d6d696e67626974636f696e3a302e312f0000000000"
+  );
+});
+
+// TODO: Mock
+test("handshake", async done => {
+  const node = new SimpleNode(
+    process.env.BITCOIND_HOST || "localhost",
+    process.env.BITCOIND_PORT ? parseInt(process.env.BITCOIND_PORT) : undefined
+  );
+  await node.handshake();
+  node.socket.end(done); // close socket before test ends
+});
+
+test("serializes getheaders message", () => {
+  const block = Buffer.from(
+    "0000000000000000001237f46acddf58578a37e213d2a6edc4884a2fcad05ba3",
+    "hex"
+  );
+  const getHeaders = new GetHeadersMessage({
+    startBlock: block
+  });
+  expect(getHeaders.serialize().toString("hex")).toBe(
+    "7f11010001a35bd0ca2f4a88c4eda6d213e2378a5758dfcd6af437120000000000000000000000000000000000000000000000000000000000000000000000000000000000"
   );
 });
