@@ -11,4 +11,8 @@ test("encode varint", () => {
   expect(encodeVarint(Number.MAX_SAFE_INTEGER)).toEqual(
     Buffer.from("ffffffffffffff1f00", "hex")
   );
+  // Too large
+  expect(() => encodeVarint(18446744073709551615)).toThrowError(
+    "Integer too large"
+  );
 });
