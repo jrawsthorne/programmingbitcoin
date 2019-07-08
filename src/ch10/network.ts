@@ -147,6 +147,55 @@ export class VersionMessage {
 
     return s.toBuffer();
   };
+
+  getCommand = (): Buffer => VersionMessage.command;
+}
+
+export class VerAckMessage {
+  public static readonly command = Buffer.from("verack");
+
+  static parse = (): VerAckMessage => new VerAckMessage();
+
+  // Empty message body
+  serialize = (): Buffer => Buffer.alloc(0);
+
+  getCommand = (): Buffer => VerAckMessage.command;
+}
+
+export class PongMessage {
+  public static readonly command = Buffer.from("pong");
+
+  constructor(public readonly nonce: Buffer) {}
+
+  static parse = (message: Buffer): PongMessage => {
+    if (message.length !== 8) {
+      throw new Error("Incorrect nonce size");
+    }
+    return new PongMessage(message.slice(0, 8));
+  };
+
+  serialize = (): Buffer => this.nonce;
+
+  getCommand = (): Buffer => PongMessage.command;
+}
+
+export class PingMessage {
+  public static readonly command = Buffer.from("ping");
+
+  constructor(
+    public readonly nonce: Buffer = u64ToEndian(randInt(Math.pow(2, 64)))
+  ) {}
+
+  static parse = (message: Buffer): PingMessage => {
+    if (message.length !== 8) {
+      throw new Error("Incorrect nonce size");
+    }
+    return new PingMessage(message.slice(0, 8));
+  };
+
+  serialize = (): Buffer => this.nonce;
+
+  getCommand = (): Buffer => PingMessage.command;
 }
 
 export class UnexpectedNetworkMagic extends Error {
