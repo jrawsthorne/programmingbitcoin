@@ -207,9 +207,8 @@ export type NetworkMessage =
   | PongMessage
   | GetHeadersMessage;
 
-export class SimpleNode {
+export class SimpleNode extends EventEmitter {
   socket: Socket;
-  es = new EventEmitter();
   private data = SmartBuffer.fromSize(1024 * 1024 * 10);
 
   constructor(
@@ -218,6 +217,7 @@ export class SimpleNode {
     public testnet: boolean = false,
     public logging: boolean = false
   ) {
+    super();
     if (port === undefined) {
       port = testnet ? 18333 : 8333;
     }
@@ -272,7 +272,7 @@ export class SimpleNode {
                 console.log(`Receive: ${envelope.toString()}`);
               }
               this.handleMessage(envelope);
-              this.es.emit(
+              this.emit(
                 `${envelope.command.toString("ascii")}Message`,
                 envelope
               );
@@ -311,7 +311,7 @@ export class SimpleNode {
     return new Promise(resolve => {
       const version = new VersionMessage();
       this.send(version);
-      this.es.once("verackMessage", resolve);
+      this.once("verackMessage", resolve);
     });
   };
 

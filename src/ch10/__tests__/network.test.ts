@@ -74,12 +74,12 @@ test("handshake", done => {
   node.socket.on("connect", async () => {
     await node.handshake();
     await new Promise(resolve => {
-      node.es.once("pingMessage", resolve);
+      node.once("pingMessage", resolve);
     });
     const ping = new PingMessage();
     node.send(ping);
     await new Promise(resolve => {
-      node.es.once("pongMessage", (message: NetworkEnvelope) => {
+      node.once("pongMessage", (message: NetworkEnvelope) => {
         expect(PongMessage.parse(message.payload).nonce).toEqual(ping.nonce);
         resolve();
       });
