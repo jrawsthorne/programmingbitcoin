@@ -32,7 +32,6 @@ export class FieldElement {
     const num = new BigNumber(this.num)
       .minus(other.num)
       .mod(this.prime)
-
       .toNumber();
     return new FieldElement(num, this.prime);
   };

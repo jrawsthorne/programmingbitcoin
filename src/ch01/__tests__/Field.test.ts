@@ -1,4 +1,4 @@
-import { FieldElement, MismatchedFields } from "../ecc";
+import { FieldElement, MismatchedFields } from "../Field";
 
 test("equal", () => {
   const a = new FieldElement(2, 31);
@@ -59,7 +59,7 @@ test("div", () => {
       .pow(-4)
       .mul(b)
       .equals(new FieldElement(13, 31))
-  );
+  ).toBeTruthy();
 });
 
 test("errors", () => {
