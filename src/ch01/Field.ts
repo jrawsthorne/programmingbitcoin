@@ -66,6 +66,10 @@ export class FieldElement {
       .toNumber();
     return new FieldElement(num, this.prime);
   };
+
+  toString = (): String => {
+    return `FieldElement { num: ${this.num}, prime: ${this.prime} }`;
+  };
 }
 
 export class MismatchedFields extends Error {
