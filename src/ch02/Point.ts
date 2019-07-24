@@ -32,6 +32,10 @@ export class Point {
     }
   }
 
+  isPointAtInfinity = (): boolean => {
+    return this.x === undefined && this.y === undefined;
+  };
+
   equals = (other: Point): boolean => {
     return (
       this.x === other.x &&

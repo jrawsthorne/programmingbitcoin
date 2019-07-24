@@ -28,4 +28,8 @@ test("add", () => {
 
   a = new Point({ x: -1, y: -1, a: 5, b: 7 });
   expect(a.add(a).equals(new Point({ x: 18, y: 77, a: 5, b: 7 }))).toBeTruthy();
+
+  // tangent to the vertical line
+  a = new Point({ x: -1, y: 0, a: 8, b: 9 });
+  expect(a.add(a).isPointAtInfinity()).toBeTruthy();
 });
