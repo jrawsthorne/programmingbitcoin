@@ -67,6 +67,14 @@ export class FieldElement {
     return new FieldElement(num, this.prime);
   };
 
+  rmul = (coefficient: number): FieldElement => {
+    const num = new BigNumber(this.num)
+      .times(new BigNumber(coefficient))
+      .mod(this.prime)
+      .toNumber();
+    return new FieldElement(num, this.prime);
+  };
+
   toString = (): String => {
     return `FieldElement { num: ${this.num}, prime: ${this.prime} }`;
   };
