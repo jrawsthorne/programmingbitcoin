@@ -1,5 +1,7 @@
 import { FieldElement } from "../ch01/Field";
 
+import BigNum from "bignum";
+
 interface ECCPointParams {
   x?: FieldElement;
   y?: FieldElement;
@@ -75,8 +77,8 @@ export class ECCPoint {
     // the points are vertically opposite
     if (
       this.x.equals(other.x) &&
-      this.y !== null &&
-      other.y !== null &&
+      this.y !== undefined &&
+      other.y !== undefined &&
       !this.y!.equals(other.y!)
     ) {
       return new ECCPoint({ a: this.a, b: this.b });
@@ -121,19 +123,22 @@ export class ECCPoint {
     throw Error("Invalid addition");
   };
 
-  rmul = (coefficient: number): ECCPoint => {
-    let coef = coefficient;
+  rmul(coefficient: number | BigNum): ECCPoint {
+    let coef = BigNum.isBigNum(coefficient)
+      ? (coefficient as BigNum)
+      : new BigNum(coefficient);
+
     let current = this as ECCPoint;
     let result = new ECCPoint({ a: this.a, b: this.b });
-    while (coef) {
-      if (coef & 1) {
+    while (coef.gt(0)) {
+      if (coef.and(1).gt(0)) {
         result = result.add(current);
       }
       current = current.add(current);
-      coef >>= 1;
+      coef = coef.shiftRight(1);
     }
     return result;
-  };
+  }
 
   toString = () => {
     if (this.isPointAtInfinity()) return "Point(infinity)";
