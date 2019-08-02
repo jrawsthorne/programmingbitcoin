@@ -1,77 +1,70 @@
 import BigNumber from "bignumber.js";
 
 export class FieldElement {
-  constructor(public num: number, public prime: number) {
+  public num: BigNumber;
+  public prime: BigNumber;
+
+  constructor(num: BigNumber | number, prime: BigNumber | number) {
     BigNumber.config({
       MODULO_MODE: BigNumber.ROUND_FLOOR
     });
-    if (num >= prime || num < 0) {
-      throw new Error(`Num ${num} not in field range 0 to ${prime - 1}`);
+
+    this.num = BigNumber.isBigNumber(num) ? num : new BigNumber(num);
+    this.prime = BigNumber.isBigNumber(prime) ? prime : new BigNumber(prime);
+
+    if (this.num.gte(this.prime) || this.num.lt(0)) {
+      throw new Error(
+        `Num ${num} not in field range 0 to ${this.prime.minus(1)}`
+      );
     }
   }
 
   equals = (other: FieldElement): boolean => {
-    return this.num === other.num && this.prime === other.prime;
+    return this.num.eq(other.num) && this.prime.eq(other.prime);
   };
 
   add = (other: FieldElement): FieldElement => {
-    if (this.prime !== other.prime) {
+    if (!this.prime.eq(other.prime)) {
       throw new MismatchedFields(this.prime, other.prime, "add");
     }
-    const num = new BigNumber(this.num)
-      .plus(other.num)
-      .mod(this.prime)
-      .toNumber();
+    const num = this.num.plus(other.num).mod(this.prime);
     return new FieldElement(num, this.prime);
   };
 
   sub = (other: FieldElement): FieldElement => {
-    if (this.prime !== other.prime) {
+    if (!this.prime.eq(other.prime)) {
       throw new MismatchedFields(this.prime, other.prime, "subtract");
     }
-    const num = new BigNumber(this.num)
-      .minus(other.num)
-      .mod(this.prime)
-      .toNumber();
+    const num = this.num.minus(other.num).mod(this.prime);
     return new FieldElement(num, this.prime);
   };
 
   mul = (other: FieldElement): FieldElement => {
-    if (this.prime !== other.prime) {
+    if (!this.prime.eq(other.prime)) {
       throw new MismatchedFields(this.prime, other.prime, "multiply");
     }
-    const num = new BigNumber(this.num)
-      .times(other.num)
-      .mod(this.prime)
-      .toNumber();
+    const num = this.num.times(other.num).mod(this.prime);
     return new FieldElement(num, this.prime);
   };
 
   pow = (exponent: number): FieldElement => {
-    const n = new BigNumber(exponent).mod(this.prime - 1);
-    const num = new BigNumber(this.num)
-      .pow(n)
-      .mod(this.prime)
-      .toNumber();
+    const n = new BigNumber(exponent).mod(this.prime.minus(1));
+    const num = this.num.pow(n).mod(this.prime);
     return new FieldElement(num, this.prime);
   };
 
   div = (other: FieldElement): FieldElement => {
-    if (this.prime !== other.prime) {
+    if (!this.prime.eq(other.prime)) {
       throw new MismatchedFields(this.prime, other.prime, "divide");
     }
-    const num = new BigNumber(this.num)
-      .times(new BigNumber(other.num).pow(this.prime - 2).mod(this.prime))
-      .mod(this.prime)
-      .toNumber();
+    const num = this.num
+      .times(other.num.pow(this.prime.minus(2)).mod(this.prime))
+      .mod(this.prime);
     return new FieldElement(num, this.prime);
   };
 
   rmul = (coefficient: number): FieldElement => {
-    const num = new BigNumber(this.num)
-      .times(new BigNumber(coefficient))
-      .mod(this.prime)
-      .toNumber();
+    const num = this.num.times(new BigNumber(coefficient)).mod(this.prime);
     return new FieldElement(num, this.prime);
   };
 
@@ -81,7 +74,7 @@ export class FieldElement {
 }
 
 export class MismatchedFields extends Error {
-  constructor(first: number, second: number, operation: string) {
+  constructor(first: BigNumber, second: BigNumber, operation: string) {
     super(
       `Cannot ${operation} two numbers in different Fields ${first} vs ${second}`
     );
