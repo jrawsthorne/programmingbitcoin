@@ -1,17 +1,18 @@
 import { ECCPoint } from "./ECCPoint";
 import { S256Field } from "./S256Field";
-import BigNumber from "bignumber.js";
-import BigNum from "bignum";
+import BN from "bn.js";
 
 const A = 0;
 const B = 7;
-const N = new BigNum(
-  "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"
+
+export const N = new BN(
+  "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+  "hex"
 );
 
 interface S256PointParams {
-  x?: BigNumber;
-  y?: BigNumber;
+  x?: BN;
+  y?: BN;
 }
 
 export class S256Point extends ECCPoint {
@@ -29,11 +30,20 @@ export class S256Point extends ECCPoint {
     else return `S256Point(${this.x!.num},${this.y!.num})`;
   };
 
-  rmul = (coefficient: number | BigNum): S256Point => {
-    let coef = BigNum.isBigNum(coefficient)
-      ? (coefficient as BigNum)
-      : new BigNum(coefficient);
+  rmul = (coefficient: number | BN): S256Point => {
+    let coef = BN.isBN(coefficient) ? coefficient : new BN(coefficient);
     coef = coef.mod(N);
     return super.rmul(coef);
   };
 }
+
+export const G = new S256Point({
+  x: new BN(
+    "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "hex"
+  ),
+  y: new BN(
+    "483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8",
+    "hex"
+  )
+});

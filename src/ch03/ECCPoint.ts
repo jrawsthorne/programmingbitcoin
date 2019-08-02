@@ -1,5 +1,5 @@
 import { FieldElement } from "../ch01/Field";
-import BigNum from "bignum";
+import BN from "bn.js";
 
 interface ECCPointParams {
   x?: FieldElement;
@@ -122,19 +122,18 @@ export class ECCPoint {
     throw Error("Invalid addition");
   };
 
-  rmul(coefficient: number | BigNum): ECCPoint {
-    let coef = BigNum.isBigNum(coefficient)
-      ? (coefficient as BigNum)
-      : new BigNum(coefficient);
+  rmul(coefficient: number | BN): ECCPoint {
+    let coef = BN.isBN(coefficient) ? coefficient : new BN(coefficient);
 
     let current = this as ECCPoint;
     let result = new ECCPoint({ a: this.a, b: this.b });
-    while (coef.gt(0)) {
-      if (coef.and(1).gt(0)) {
+
+    while (coef.gt(new BN(0))) {
+      if (coef.and(new BN(1)).gt(new BN(0))) {
         result = result.add(current);
       }
       current = current.add(current);
-      coef = coef.shiftRight(1);
+      coef = coef.shrn(1);
     }
     return result;
   }

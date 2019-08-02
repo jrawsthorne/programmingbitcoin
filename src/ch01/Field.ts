@@ -1,21 +1,17 @@
-import BigNumber from "bignumber.js";
+import BN from "bn.js";
 
 export class FieldElement {
-  public num: BigNumber;
-  public prime: BigNumber;
+  public num: BN;
+  public prime: BN;
 
-  constructor(num: BigNumber | number, prime: BigNumber | number) {
-    BigNumber.config({
-      MODULO_MODE: BigNumber.ROUND_FLOOR
-    });
+  constructor(num: BN | number, prime: BN | number) {
+    this.num = BN.isBN(num) ? num : new BN(num);
+    this.prime = BN.isBN(prime) ? prime : new BN(prime);
 
-    this.num = BigNumber.isBigNumber(num) ? num : new BigNumber(num);
-    this.prime = BigNumber.isBigNumber(prime) ? prime : new BigNumber(prime);
-
-    if (this.num.gte(this.prime) || this.num.lt(0)) {
+    if (this.num.gte(this.prime) || this.num.isNeg()) {
       throw new Error(
-        `Num ${this.num.toString()} not in field range 0 to ${this.prime.minus(
-          1
+        `Num ${this.num.toString()} not in field range 0 to ${this.prime.sub(
+          new BN(1)
         )}`
       );
     }
@@ -29,7 +25,7 @@ export class FieldElement {
     if (!this.prime.eq(other.prime)) {
       throw new MismatchedFields(this.prime, other.prime, "add");
     }
-    const num = this.num.plus(other.num).mod(this.prime);
+    const num = this.num.add(other.num).mod(this.prime);
     return new FieldElement(num, this.prime);
   };
 
@@ -37,7 +33,8 @@ export class FieldElement {
     if (!this.prime.eq(other.prime)) {
       throw new MismatchedFields(this.prime, other.prime, "subtract");
     }
-    const num = this.num.minus(other.num).mod(this.prime);
+    // could be negative, use umod to make answer positive
+    const num = this.num.sub(other.num).umod(this.prime);
     return new FieldElement(num, this.prime);
   };
 
@@ -45,13 +42,18 @@ export class FieldElement {
     if (!this.prime.eq(other.prime)) {
       throw new MismatchedFields(this.prime, other.prime, "multiply");
     }
-    const num = this.num.times(other.num).mod(this.prime);
+    const num = this.num.mul(other.num).mod(this.prime);
     return new FieldElement(num, this.prime);
   };
 
+  // exponent could be negative
   pow = (exponent: number): FieldElement => {
-    const n = new BigNumber(exponent).mod(this.prime.minus(1));
-    const num = this.num.pow(n, this.prime);
+    const n = new BN(exponent).umod(this.prime.sub(new BN(1)));
+    const red = BN.mont(this.prime);
+    const num = this.num
+      .toRed(red)
+      .redPow(n)
+      .fromRed();
     return new FieldElement(num, this.prime);
   };
 
@@ -59,19 +61,18 @@ export class FieldElement {
     if (!this.prime.eq(other.prime)) {
       throw new MismatchedFields(this.prime, other.prime, "divide");
     }
-
-    const num = this.num
-      .times(other.num.pow(this.prime.minus(2), this.prime))
-      .mod(this.prime);
+    const red = BN.mont(this.prime);
+    const power = other.num
+      .toRed(red)
+      .redPow(this.prime.sub(new BN(2)))
+      .fromRed();
+    const num = this.num.mul(power).mod(this.prime);
     return new FieldElement(num, this.prime);
   };
 
-  rmul = (coefficient: BigNumber | number): FieldElement => {
-    const coef = BigNumber.isBigNumber(coefficient)
-      ? coefficient
-      : new BigNumber(coefficient);
-
-    const num = this.num.times(coef).mod(this.prime);
+  rmul = (coefficient: BN | number): FieldElement => {
+    const coef = BN.isBN(coefficient) ? coefficient : new BN(coefficient);
+    const num = this.num.mul(coef).mod(this.prime);
     return new FieldElement(num, this.prime);
   };
 
@@ -81,7 +82,7 @@ export class FieldElement {
 }
 
 export class MismatchedFields extends Error {
-  constructor(first: BigNumber, second: BigNumber, operation: string) {
+  constructor(first: BN, second: BN, operation: string) {
     super(
       `Cannot ${operation} two numbers in different Fields ${first.toString()} vs ${second.toString()}`
     );
