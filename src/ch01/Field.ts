@@ -14,7 +14,9 @@ export class FieldElement {
 
     if (this.num.gte(this.prime) || this.num.lt(0)) {
       throw new Error(
-        `Num ${num} not in field range 0 to ${this.prime.minus(1)}`
+        `Num ${this.num.toString()} not in field range 0 to ${this.prime.minus(
+          1
+        )}`
       );
     }
   }
@@ -49,7 +51,7 @@ export class FieldElement {
 
   pow = (exponent: number): FieldElement => {
     const n = new BigNumber(exponent).mod(this.prime.minus(1));
-    const num = this.num.pow(n).mod(this.prime);
+    const num = this.num.pow(n, this.prime);
     return new FieldElement(num, this.prime);
   };
 
@@ -57,14 +59,19 @@ export class FieldElement {
     if (!this.prime.eq(other.prime)) {
       throw new MismatchedFields(this.prime, other.prime, "divide");
     }
+
     const num = this.num
-      .times(other.num.pow(this.prime.minus(2)).mod(this.prime))
+      .times(other.num.pow(this.prime.minus(2), this.prime))
       .mod(this.prime);
     return new FieldElement(num, this.prime);
   };
 
-  rmul = (coefficient: number): FieldElement => {
-    const num = this.num.times(new BigNumber(coefficient)).mod(this.prime);
+  rmul = (coefficient: BigNumber | number): FieldElement => {
+    const coef = BigNumber.isBigNumber(coefficient)
+      ? coefficient
+      : new BigNumber(coefficient);
+
+    const num = this.num.times(coef).mod(this.prime);
     return new FieldElement(num, this.prime);
   };
 
@@ -76,7 +83,7 @@ export class FieldElement {
 export class MismatchedFields extends Error {
   constructor(first: BigNumber, second: BigNumber, operation: string) {
     super(
-      `Cannot ${operation} two numbers in different Fields ${first} vs ${second}`
+      `Cannot ${operation} two numbers in different Fields ${first.toString()} vs ${second.toString()}`
     );
     this.name = this.constructor.name;
     Error.captureStackTrace(this, this.constructor);
