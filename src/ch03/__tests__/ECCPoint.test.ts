@@ -46,30 +46,30 @@ test("add", () => {
     const x3 = new FieldElement(x3_raw, prime);
     const y3 = new FieldElement(y3_raw, prime);
     const p3 = new ECCPoint({ x: x3, y: y3, a, b });
-    expect(p1.add(p2).equals(p3)).toBeTruthy();
+    expect(p1.add(p2).equals(p3)).toBe(true);
   }
 
   // other + 0 = other
   let p1 = new ECCPoint({ a, b });
   let p2 = new ECCPoint({ a, b });
-  expect(p1.add(p2).isPointAtInfinity()).toBeTruthy();
+  expect(p1.add(p2).isPointAtInfinity()).toBe(true);
 
   // 0 + this = this
   let x = new FieldElement(192, prime);
   let y = new FieldElement(105, prime);
   p2 = new ECCPoint({ x, y, a, b });
-  expect(p2.add(p1).equals(p2)).toBeTruthy();
+  expect(p2.add(p1).equals(p2)).toBe(true);
 
   // the points are vertically opposite
   y = new FieldElement(118, prime);
   p1 = new ECCPoint({ x, y, a, b });
-  expect(p2.add(p1).isPointAtInfinity()).toBeTruthy();
+  expect(p2.add(p1).isPointAtInfinity()).toBe(true);
 
   // tangent to the vertical line
   x = new FieldElement(6, prime);
   y = new FieldElement(0, prime);
-  p1 = new ECCPoint({ x, y: new FieldElement(0, prime), a, b });
-  expect(p1.add(p1).isPointAtInfinity()).toBeTruthy();
+  p1 = new ECCPoint({ x, y, a, b });
+  expect(p1.add(p1).isPointAtInfinity()).toBe(true);
 
   // p1 = p2
   x = new FieldElement(68, prime);
@@ -84,7 +84,7 @@ test("add", () => {
         b
       })
     )
-  ).toBeTruthy();
+  ).toBe(true);
 });
 
 test("rmul", () => {
@@ -98,7 +98,9 @@ test("rmul", () => {
   const prime = 223;
   const a = new FieldElement(0, prime);
   const b = new FieldElement(7, prime);
-  const multiplications = [
+  const multiplications: Array<
+    [number, number, number, number | null, number | null]
+  > = [
     // (coefficient, x1, y1, x2, y2)
     [2, 192, 105, 49, 71],
     [2, 143, 98, 64, 168],
@@ -108,8 +110,8 @@ test("rmul", () => {
     [21, 47, 71, null, null]
   ];
   for (const [s, x1_raw, y1_raw, x2_raw, y2_raw] of multiplications) {
-    const x1 = new FieldElement(x1_raw!, prime);
-    const y1 = new FieldElement(y1_raw!, prime);
+    const x1 = new FieldElement(x1_raw, prime);
+    const y1 = new FieldElement(y1_raw, prime);
     const p1 = new ECCPoint({ x: x1, y: y1, a, b });
     let p2: ECCPoint;
     // initialize the second point based on whether it's the point at infinity

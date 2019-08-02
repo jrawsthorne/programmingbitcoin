@@ -1,5 +1,4 @@
 import { FieldElement } from "../ch01/Field";
-
 import BigNum from "bignum";
 
 interface ECCPointParams {
