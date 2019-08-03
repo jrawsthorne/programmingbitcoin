@@ -109,7 +109,7 @@ export class VersionMessage {
     senderIp = Buffer.alloc(4),
     senderPort = 8333,
     // randomly generated 8 byte nonce
-    nonce = u64ToEndian(randInt(Math.pow(2, 64))),
+    nonce = u64ToEndian(randInt(Number.MAX_SAFE_INTEGER)),
     userAgent = Buffer.from("/programmingbitcoin:0.1/"),
     latestBlock = 0,
     relay = false
@@ -185,7 +185,9 @@ export class PingMessage {
   public static readonly command = Buffer.from("ping");
 
   constructor(
-    public readonly nonce: Buffer = u64ToEndian(randInt(Math.pow(2, 64)))
+    public readonly nonce: Buffer = u64ToEndian(
+      randInt(Number.MAX_SAFE_INTEGER)
+    )
   ) {}
 
   static parse = (message: Buffer): PingMessage => {
@@ -237,7 +239,7 @@ export class SimpleNode extends EventEmitter {
   }
 
   // listens for new network messages from a tcp socket
-  listen = () => {
+  private listen = () => {
     const MAGIC = this.testnet ? TESTNET_NETWORK_MAGIC : NETWORK_MAGIC;
 
     this.socket.on("data", (data: Buffer) => {
@@ -291,18 +293,14 @@ export class SimpleNode extends EventEmitter {
     });
   };
 
-  handleMessage = (message: NetworkEnvelope): void => {
-    switch (message.command.toString("ascii")) {
+  private handleMessage = (message: NetworkEnvelope): void => {
+    if (message.command.equals(VersionMessage.command)) {
       // send back verack if we receive version
-      case VersionMessage.command.toString("ascii"):
-        this.send(new VerAckMessage());
-        break;
+      this.send(new VerAckMessage());
+    } else if (message.command.equals(PingMessage.command)) {
       // send back pong with same nonce if we receive ping
-      case PingMessage.command.toString("ascii"):
-        const nonce = PingMessage.parse(message.payload).nonce;
-        this.send(new PongMessage(nonce));
-        break;
-      default:
+      const nonce = PingMessage.parse(message.payload).nonce;
+      this.send(new PongMessage(nonce));
     }
   };
 

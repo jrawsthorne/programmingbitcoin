@@ -1,5 +1,5 @@
 import { sha256 } from "hash.js";
-import { toBuffer } from "bignum";
+import BN from "bn.js";
 
 // Double sha256 hash
 export const hash256 = (s: Buffer): Buffer => {
@@ -18,10 +18,7 @@ export const u64ToEndian = (
   number: number,
   endian: "little" | "big" = "little"
 ): Buffer => {
-  return toBuffer(number, {
-    endian,
-    size: 8
-  });
+  return new BN(number).toBuffer(endian === "little" ? "le" : "be", 8);
 };
 
 export const randInt = (max: number) => {
