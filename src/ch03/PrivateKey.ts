@@ -27,8 +27,8 @@ export class PrivateKey {
   };
 
   deterministicK = (z: BN): BN => {
-    let k = Buffer.alloc(32);
-    let v = Buffer.alloc(32);
+    let k = Buffer.alloc(32, 0);
+    let v = Buffer.alloc(32, 1);
 
     if (z.gt(N)) {
       z = z.sub(N);
@@ -39,7 +39,7 @@ export class PrivateKey {
 
     k = crypto
       .createHmac("sha256", k)
-      .update(Buffer.concat([v, Buffer.from("0x00"), secretBytes, zBytes]))
+      .update(Buffer.concat([v, Buffer.alloc(1, 0), secretBytes, zBytes]))
       .digest();
     v = crypto
       .createHmac("sha256", k)
@@ -47,7 +47,7 @@ export class PrivateKey {
       .digest();
     k = crypto
       .createHmac("sha256", k)
-      .update(Buffer.concat([v, Buffer.from("0x01"), secretBytes, zBytes]))
+      .update(Buffer.concat([v, Buffer.alloc(1, 1), secretBytes, zBytes]))
       .digest();
     v = crypto
       .createHmac("sha256", k)
@@ -65,7 +65,7 @@ export class PrivateKey {
       }
       k = crypto
         .createHmac("sha256", k)
-        .update(Buffer.concat([v, Buffer.from("0x00")]))
+        .update(Buffer.concat([v, Buffer.alloc(1, 0)]))
         .digest();
       v = crypto
         .createHmac("sha256", k)
