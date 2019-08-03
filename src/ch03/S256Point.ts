@@ -36,11 +36,20 @@ export class S256Point extends ECCPoint {
     return total.x!.num.eq(sig.r);
   };
 
-  sec = (): Buffer => {
+  sec = (compressed: boolean = true): Buffer => {
     const s = new SmartBuffer();
-    s.writeBuffer(Buffer.from("04", "hex"));
-    s.writeBuffer(this.x!.num.toBuffer("be", 32));
-    s.writeBuffer(this.y!.num.toBuffer("be", 32));
+    if (compressed) {
+      if (this.y!.num.mod(new BN(2)).eq(new BN(0))) {
+        s.writeBuffer(Buffer.alloc(1, 2));
+      } else {
+        s.writeBuffer(Buffer.alloc(1, 3));
+      }
+      s.writeBuffer(this.x!.num.toBuffer("be", 32));
+    } else {
+      s.writeBuffer(Buffer.from("04", "hex"));
+      s.writeBuffer(this.x!.num.toBuffer("be", 32));
+      s.writeBuffer(this.y!.num.toBuffer("be", 32));
+    }
     return s.toBuffer();
   };
 

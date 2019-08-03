@@ -26,6 +26,7 @@ export class PrivateKey {
     return new Signature(r, s);
   };
 
+  // https://tools.ietf.org/html/rfc6979#section-3.2
   deterministicK = (z: BN): BN => {
     let k = Buffer.alloc(32, 0);
     let v = Buffer.alloc(32, 1);
