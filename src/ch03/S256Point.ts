@@ -1,6 +1,7 @@
 import { ECCPoint } from "./ECCPoint";
 import { S256Field } from "./S256Field";
 import BN from "bn.js";
+import { Signature } from "./Signature";
 
 const A = 0;
 const B = 7;
@@ -25,15 +26,24 @@ export class S256Point extends ECCPoint {
     });
   }
 
-  toString = (): string => {
-    if (this.isPointAtInfinity()) return "S256Point(infinity)";
-    else return `S256Point(${this.x!.num},${this.y!.num})`;
+  static verify = (point: S256Point, z: BN, sig: Signature): boolean => {
+    const red = BN.red(N);
+    let sInv = sig.s.toRed(red).redPow(N.sub(new BN(2)));
+    let u = z.mul(sInv).mod(N);
+    let v = sig.r.mul(sInv).mod(N);
+    const total = G.rmul(u).add(point.rmul(v));
+    return total.x!.num.eq(sig.r);
   };
 
   rmul = (coefficient: number | BN): S256Point => {
     let coef = BN.isBN(coefficient) ? coefficient : new BN(coefficient);
     coef = coef.mod(N);
     return super.rmul(coef);
+  };
+
+  toString = (): string => {
+    if (this.isPointAtInfinity()) return "S256Point(infinity)";
+    else return `S256Point(${this.x!.num},${this.y!.num})`;
   };
 }
 

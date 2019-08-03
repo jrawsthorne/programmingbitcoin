@@ -3,10 +3,12 @@ import BN from "bn.js";
 export class FieldElement {
   public num: BN;
   public prime: BN;
+  private red: any;
 
   constructor(num: BN | number, prime: BN | number) {
     this.num = BN.isBN(num) ? num : new BN(num);
     this.prime = BN.isBN(prime) ? prime : new BN(prime);
+    this.red = BN.red(this.prime);
 
     if (this.num.gte(this.prime) || this.num.isNeg()) {
       throw new Error(
@@ -49,9 +51,8 @@ export class FieldElement {
   // exponent could be negative
   pow = (exponent: number): FieldElement => {
     const n = new BN(exponent).umod(this.prime.sub(new BN(1)));
-    const red = BN.mont(this.prime);
     const num = this.num
-      .toRed(red)
+      .toRed(this.red)
       .redPow(n)
       .fromRed();
     return new FieldElement(num, this.prime);
@@ -61,9 +62,8 @@ export class FieldElement {
     if (!this.prime.eq(other.prime)) {
       throw new MismatchedFields(this.prime, other.prime, "divide");
     }
-    const red = BN.mont(this.prime);
     const power = other.num
-      .toRed(red)
+      .toRed(this.red)
       .redPow(this.prime.sub(new BN(2)))
       .fromRed();
     const num = this.num.mul(power).mod(this.prime);
