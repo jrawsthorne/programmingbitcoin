@@ -1,5 +1,5 @@
 import { ECCPoint } from "./ECCPoint";
-import { S256Field } from "./S256Field";
+import { S256Field, P } from "./S256Field";
 import BN from "bn.js";
 import { Signature } from "./Signature";
 import { SmartBuffer } from "smart-buffer";
@@ -51,6 +51,32 @@ export class S256Point extends ECCPoint {
       s.writeBuffer(this.y!.num.toBuffer("be", 32));
     }
     return s.toBuffer();
+  };
+
+  static parse = (sec: Buffer): S256Point => {
+    if (sec[0] === 4) {
+      const x = new BN(sec.slice(1, 33));
+      const y = new BN(sec.slice(33, 65));
+      return new S256Point({ x, y });
+    }
+    const isEven = sec[0] === 2;
+    const x = new S256Field(new BN(sec.slice(1)));
+    // right side of the equation y^2 = x^3 + 7
+    const alpha = new S256Field(x.pow(3).add(new S256Field(B)).num);
+    // solve for left side
+    const beta = alpha.sqrt();
+    let evenBeta: S256Field;
+    let oddBeta: S256Field;
+    if (beta.num.isEven()) {
+      evenBeta = beta;
+      oddBeta = new S256Field(P.sub(beta.num));
+    } else {
+      evenBeta = new S256Field(P.sub(beta.num));
+      oddBeta = beta;
+    }
+    return isEven
+      ? new S256Point({ x: x.num, y: evenBeta.num })
+      : new S256Point({ x: x.num, y: oddBeta.num });
   };
 
   rmul = (coefficient: number | BN): S256Point => {

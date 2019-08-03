@@ -1,5 +1,5 @@
 import BN from "bn.js";
-import { G } from "../../ch03/S256Point";
+import { G, S256Point } from "../../ch03/S256Point";
 
 test("sec", () => {
   let coefficient: BN | number = new BN(999).pow(new BN(3));
@@ -39,4 +39,19 @@ test("sec", () => {
   point = G.rmul(coefficient);
   expect(point.sec(false).equals(uncompressed)).toBe(true);
   expect(point.sec(true).equals(compressed)).toBe(true);
+});
+
+test("parse", () => {
+  let coefficient: BN | number = new BN(999).pow(new BN(3));
+  let uncompressed = Buffer.from(
+    "049d5ca49670cbe4c3bfa84c96a8c87df086c6ea6a24ba6b809c9de234496808d56fa15cc7f3d38cda98dee2419f415b7513dde1301f8643cd9245aea7f3f911f9",
+    "hex"
+  );
+  let compressed = Buffer.from(
+    "039d5ca49670cbe4c3bfa84c96a8c87df086c6ea6a24ba6b809c9de234496808d5",
+    "hex"
+  );
+  let point = G.rmul(coefficient);
+  expect(S256Point.parse(uncompressed).equals(point)).toBe(true);
+  expect(S256Point.parse(compressed).equals(point)).toBe(true);
 });
