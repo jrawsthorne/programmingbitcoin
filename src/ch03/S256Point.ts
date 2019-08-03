@@ -2,6 +2,7 @@ import { ECCPoint } from "./ECCPoint";
 import { S256Field } from "./S256Field";
 import BN from "bn.js";
 import { Signature } from "./Signature";
+import { SmartBuffer } from "smart-buffer";
 
 const A = 0;
 const B = 7;
@@ -26,19 +27,30 @@ export class S256Point extends ECCPoint {
     });
   }
 
-  static verify = (point: S256Point, z: BN, sig: Signature): boolean => {
+  verify = (z: BN, sig: Signature): boolean => {
     const red = BN.red(N);
     let sInv = sig.s.toRed(red).redPow(N.sub(new BN(2)));
     let u = z.mul(sInv).mod(N);
     let v = sig.r.mul(sInv).mod(N);
-    const total = G.rmul(u).add(point.rmul(v));
+    const total = G.rmul(u).add(this.rmul(v));
     return total.x!.num.eq(sig.r);
+  };
+
+  sec = (): Buffer => {
+    const s = new SmartBuffer();
+    s.writeBuffer(Buffer.from("0x04"));
+    s.writeBuffer(this.x!.num.toBuffer("be", 32));
+    s.writeBuffer(this.y!.num.toBuffer("be", 32));
+    return s.toBuffer();
   };
 
   rmul = (coefficient: number | BN): S256Point => {
     let coef = BN.isBN(coefficient) ? coefficient : new BN(coefficient);
     coef = coef.mod(N);
-    return super.rmul(coef);
+    const point = super.rmul(coef);
+    const x = point.x ? point.x.num : undefined;
+    const y = point.y ? point.y.num : undefined;
+    return new S256Point({ x, y });
   };
 
   toString = (): string => {

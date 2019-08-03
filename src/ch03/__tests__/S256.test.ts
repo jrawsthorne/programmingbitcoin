@@ -84,7 +84,7 @@ test("verify", () => {
     "68342ceff8935ededd102dd876ffd6ba72d6a427a3edb13d26eb0781cb423c4",
     "hex"
   );
-  expect(S256Point.verify(point, z, new Signature(r, s))).toBe(true);
+  expect(point.verify(z, new Signature(r, s))).toBe(true);
   z = new BN(
     "7c076ff316692a3d7eb3c3bb0f8b1488cf72e1afcd929e29307032997a838a3d",
     "hex"
@@ -97,7 +97,7 @@ test("verify", () => {
     "c7207fee197d27c618aea621406f6bf5ef6fca38681d82b2f06fddbdce6feab6",
     "hex"
   );
-  expect(S256Point.verify(point, z, new Signature(r, s))).toBe(true);
+  expect(point.verify(z, new Signature(r, s))).toBe(true);
 });
 
 test("sign", () => {
@@ -105,5 +105,5 @@ test("sign", () => {
   const z = N.sub(new BN(2));
   const sig = pk.sign(z);
 
-  expect(S256Point.verify(pk.point, z, sig)).toBe(true);
+  expect(pk.point.verify(z, sig)).toBe(true);
 });

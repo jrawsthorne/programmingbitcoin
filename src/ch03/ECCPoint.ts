@@ -138,7 +138,7 @@ export class ECCPoint {
     return result;
   }
 
-  toString = () => {
+  toString = (): string => {
     if (this.isPointAtInfinity()) return "Point(infinity)";
     else
       return `Point(${this.x!.num},${this.y!.num})_${this.a.num}_${
