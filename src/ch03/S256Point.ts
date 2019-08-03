@@ -38,7 +38,7 @@ export class S256Point extends ECCPoint {
 
   sec = (): Buffer => {
     const s = new SmartBuffer();
-    s.writeBuffer(Buffer.from("0x04"));
+    s.writeBuffer(Buffer.from("04", "hex"));
     s.writeBuffer(this.x!.num.toBuffer("be", 32));
     s.writeBuffer(this.y!.num.toBuffer("be", 32));
     return s.toBuffer();
