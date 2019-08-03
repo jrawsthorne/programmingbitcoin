@@ -49,8 +49,9 @@ export class FieldElement {
   };
 
   // exponent could be negative
-  pow = (exponent: number): FieldElement => {
-    const n = new BN(exponent).umod(this.prime.sub(new BN(1)));
+  pow = (exponent: number | BN): FieldElement => {
+    const expo = BN.isBN(exponent) ? exponent : new BN(exponent);
+    const n = expo.umod(this.prime.sub(new BN(1)));
     const num = this.num
       .toRed(this.red)
       .redPow(n)
