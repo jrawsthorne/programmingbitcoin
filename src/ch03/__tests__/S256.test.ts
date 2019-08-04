@@ -2,6 +2,7 @@ import { N, G, S256Point } from "../S256Point";
 import BN from "bn.js";
 import { PrivateKey } from "../PrivateKey";
 import { Signature } from "../Signature";
+import { randBN } from "../../helper";
 
 test("order", () => {
   expect(G.rmul(N).isPointAtInfinity());
@@ -100,9 +101,9 @@ test("verify", () => {
   expect(point.verify(z, new Signature(r, s))).toBe(true);
 });
 
-test("sign", () => {
-  const pk = new PrivateKey(N.sub(new BN(1)));
-  const z = N.sub(new BN(2));
+test("sign", async () => {
+  const pk = new PrivateKey(await randBN(new BN(0), N));
+  const z = await randBN(new BN(0), new BN(2).pow(new BN(256)));
   const sig = pk.sign(z);
 
   expect(pk.point.verify(z, sig)).toBe(true);
