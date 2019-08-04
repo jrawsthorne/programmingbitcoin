@@ -3,6 +3,7 @@ import { S256Field, P } from "./S256Field";
 import BN from "bn.js";
 import { Signature } from "./Signature";
 import { SmartBuffer } from "smart-buffer";
+import { hash160, encodeBase58Checksum } from "../helper";
 
 const A = 0;
 const B = 7;
@@ -77,6 +78,21 @@ export class S256Point extends ECCPoint {
     return isEven
       ? new S256Point({ x: x.num, y: evenBeta.num })
       : new S256Point({ x: x.num, y: oddBeta.num });
+  };
+
+  hash160 = (compressed: boolean = true): Buffer => {
+    return hash160(this.sec(compressed));
+  };
+
+  address = (compressed: boolean = true, testnet: boolean = false): string => {
+    const h160 = this.hash160(compressed);
+    let prefix: Buffer;
+    if (testnet) {
+      prefix = Buffer.alloc(1, "6f", "hex");
+    } else {
+      prefix = Buffer.alloc(1, 0);
+    }
+    return encodeBase58Checksum(Buffer.concat([prefix, h160]));
   };
 
   rmul = (coefficient: number | BN): S256Point => {
