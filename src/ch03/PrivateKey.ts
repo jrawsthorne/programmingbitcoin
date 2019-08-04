@@ -2,6 +2,7 @@ import BN from "bn.js";
 import { S256Point, G, N } from "./S256Point";
 import { Signature } from "./Signature";
 import crypto from "crypto";
+import { encodeBase58Checksum } from "../helper";
 
 export class PrivateKey {
   public point: S256Point;
@@ -9,6 +10,23 @@ export class PrivateKey {
   constructor(public secret: BN) {
     this.point = G.rmul(secret);
   }
+
+  wif = (compressed: boolean = true, testnet: boolean = false): string => {
+    const secretBytes = this.secret.toBuffer("be", 32);
+    let prefix: Buffer;
+    if (testnet) {
+      prefix = Buffer.alloc(1, "ef", "hex");
+    } else {
+      prefix = Buffer.alloc(1, "80", "hex");
+    }
+    let suffix: Buffer;
+    if (compressed) {
+      suffix = Buffer.alloc(1, 1);
+    } else {
+      suffix = Buffer.alloc(0);
+    }
+    return encodeBase58Checksum(Buffer.concat([prefix, secretBytes, suffix]));
+  };
 
   sign = (z: BN): Signature => {
     const k = this.deterministicK(z);
