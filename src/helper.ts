@@ -1,5 +1,6 @@
 import { sha256 } from "hash.js";
 import BN from "bn.js";
+import crypto from "crypto";
 
 // Double sha256 hash
 export const hash256 = (s: Buffer): Buffer => {
@@ -23,6 +24,20 @@ export const u64ToEndian = (
 
 export const randInt = (max: number) => {
   return Math.floor(Math.random() * Math.floor(max));
+};
+
+export const randBN = async (min: BN, max: BN): Promise<BN> => {
+  if (min.gt(max)) {
+    throw Error("Max must be greater than min");
+  }
+  const range = max.sub(min);
+  const randomBytes = await crypto.randomBytes(range.byteLength());
+  const randomValue = new BN(randomBytes);
+  if (randomValue.lte(range)) {
+    return min.add(randomValue);
+  } else {
+    return randBN(min, max);
+  }
 };
 
 export const toIPFormat = (ip: Buffer): Buffer => {
