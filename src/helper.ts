@@ -70,3 +70,32 @@ export const encodeVarint = (integer: number): Buffer => {
     throw new Error("Integer too large");
   }
 };
+
+const BASE58_ALPHABET =
+  "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+export const encodeBase58 = (s: Buffer): string => {
+  let count = 0;
+  for (const c of s) {
+    if (c == 0) {
+      count += 1;
+    } else {
+      break;
+    }
+  }
+  let num = new BN(s);
+  const prefix = "1".repeat(count);
+  let result = "";
+  while (num.gt(new BN(0))) {
+    const newNum = num.div(new BN(58));
+    const mod = num.mod(new BN(58));
+    num = newNum;
+    result = BASE58_ALPHABET[mod.toNumber()] + result;
+  }
+
+  return prefix + result;
+};
+
+export const encodeBase58Checksum = (b: Buffer): string => {
+  return encodeBase58(Buffer.concat([b, hash256(b).slice(0, 4)]));
+};
