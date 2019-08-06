@@ -7,7 +7,6 @@ export class TxOut {
 
   static parse = (s: SmartBuffer): TxOut => {
     const amount = toBigIntLE(s.readBuffer(8));
-    console.log("am", amount);
     // Skip over script for now
     const scriptPubkey = new Script();
     s.readOffset += 26;
