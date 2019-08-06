@@ -1,4 +1,4 @@
-import { hash256, readVarint } from "../helper";
+import { hash256, readVarint, encodeVarint } from "../helper";
 import { TxIn } from "./TxIn";
 import { SmartBuffer } from "smart-buffer";
 import { TxOut } from "./TxOut";
@@ -12,7 +12,7 @@ export class Tx {
     public testnet: boolean = false
   ) {}
 
-  static parse = (stream: Buffer) => {
+  static parse = (stream: Buffer, testnet: boolean = false) => {
     const s = SmartBuffer.fromBuffer(stream);
     const version = s.readUInt32LE();
     const numInputs = readVarint(s);
@@ -26,7 +26,22 @@ export class Tx {
       outputs.push(TxOut.parse(s));
     }
     const locktime = s.readUInt32LE();
-    return new Tx(version, inputs, outputs, locktime);
+    return new Tx(version, inputs, outputs, locktime, testnet);
+  };
+
+  serialize = (): Buffer => {
+    const s = new SmartBuffer();
+    s.writeUInt32LE(this.version);
+    s.writeBuffer(encodeVarint(this.txIns.length));
+    for (const txIn of this.txIns) {
+      s.writeBuffer(txIn.serialize());
+    }
+    s.writeBuffer(encodeVarint(this.txOuts.length));
+    for (const txOut of this.txOuts) {
+      s.writeBuffer(txOut.serialize());
+    }
+    s.writeUInt32LE(this.locktime);
+    return s.toBuffer();
   };
 
   id = (): string => {
@@ -37,8 +52,16 @@ export class Tx {
     return hash256(this.serialize()).reverse();
   };
 
-  serialize = (): Buffer => {
-    return Buffer.alloc(0);
+  fee = async (testnet: boolean = false): Promise<bigint> => {
+    let inputSum = 0n;
+    let outputSum = 0n;
+    for (const txIn of this.txIns) {
+      inputSum += await txIn.value(testnet);
+    }
+    for (const txOut of this.txOuts) {
+      outputSum += await txOut.amount;
+    }
+    return inputSum - outputSum;
   };
 
   toString = (): string => {
