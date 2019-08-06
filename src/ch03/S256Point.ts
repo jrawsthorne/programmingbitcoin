@@ -3,7 +3,7 @@ import { S256Field, P } from "./S256Field";
 import { Signature } from "./Signature";
 import { SmartBuffer } from "smart-buffer";
 import { hash160, encodeBase58Checksum, mod, pow } from "../helper";
-import { toBufferBE, toBigIntLE, toBigIntBE } from "bigint-buffer";
+import { toBufferBE, toBigIntBE } from "bigint-buffer";
 
 const A = 0n;
 const B = 7n;
