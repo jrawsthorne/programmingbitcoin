@@ -1,6 +1,8 @@
-import { sha256, ripemd160 } from "hash.js";
 import BN from "bn.js";
 import crypto from "crypto";
+
+const ripemd160 = () => crypto.createHash("ripemd160");
+const sha256 = () => crypto.createHash("sha256");
 
 // Double sha256 hash
 export const hash256 = (s: Buffer): Buffer => {
