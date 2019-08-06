@@ -21,8 +21,8 @@ export class TxFetcher {
   ): Promise<Tx> => {
     if (fresh || TxFetcher.cache[txId] === undefined) {
       const url = `${TxFetcher.getUrl(testnet)}/tx/${txId}/hex`;
-      const response = await fetch(url);
-      let raw = Buffer.from(await response.text());
+      const response = await fetch(url).then(res => res.text());
+      let raw = Buffer.from(response, "hex");
       let tx: Tx;
       if (raw[4] === 0) {
         raw = Buffer.concat([raw.slice(0, 4), raw.slice(6)]);

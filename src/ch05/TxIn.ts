@@ -14,7 +14,7 @@ export class TxIn {
   static parse = (s: SmartBuffer) => {
     const prevTx = s.readBuffer(32).reverse();
     const prevIndex = s.readUInt32LE();
-    const scriptSig = new Script();
+    const scriptSig = Script.parse(s);
     const sequence = s.readUInt32LE();
     return new TxIn(prevTx, prevIndex, scriptSig, sequence);
   };

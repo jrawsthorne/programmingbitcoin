@@ -7,7 +7,7 @@ export class TxOut {
 
   static parse = (s: SmartBuffer): TxOut => {
     const amount = toBigIntLE(s.readBuffer(8));
-    const scriptPubkey = new Script();
+    const scriptPubkey = Script.parse(s);
     return new TxOut(amount, scriptPubkey);
   };
 
