@@ -1,22 +1,18 @@
 import { FieldElement } from "../ch01/Field";
-import BN from "bn.js";
 
-export const P = new BN(2)
-  .pow(new BN(256))
-  .sub(new BN(2).pow(new BN(32)))
-  .sub(new BN(977));
+export const P = 2n ** 256n - 2n ** 32n - 977n;
 
 export class S256Field extends FieldElement {
-  constructor(num: BN | number) {
+  constructor(num: bigint) {
     super(num, P);
   }
 
   sqrt = (): S256Field => {
-    const field = this.pow(P.add(new BN(1)).divn(4));
+    const field = this.pow((P + 1n) / 4n);
     return new S256Field(field.num);
   };
 
   toString = (): string => {
-    return this.num.toString("hex").padStart(64);
+    return this.num.toString(16).padStart(64);
   };
 }

@@ -1,18 +1,18 @@
-import BN from "bn.js";
 import { S256Point, G, N } from "./S256Point";
 import { Signature } from "./Signature";
 import crypto from "crypto";
-import { encodeBase58Checksum } from "../helper";
+import { encodeBase58Checksum, pow } from "../helper";
+import { toBufferBE, toBigIntBE } from "bigint-buffer";
 
 export class PrivateKey {
   public point: S256Point;
 
-  constructor(public secret: BN) {
+  constructor(public secret: bigint) {
     this.point = G.rmul(secret);
   }
 
   wif = (compressed: boolean = true, testnet: boolean = false): string => {
-    const secretBytes = this.secret.toBuffer("be", 32);
+    const secretBytes = toBufferBE(this.secret, 32);
     let prefix: Buffer;
     if (testnet) {
       prefix = Buffer.alloc(1, "ef", "hex");
@@ -28,33 +28,30 @@ export class PrivateKey {
     return encodeBase58Checksum(Buffer.concat([prefix, secretBytes, suffix]));
   };
 
-  sign = (z: BN): Signature => {
+  sign = (z: bigint): Signature => {
     const k = this.deterministicK(z);
     const r = G.rmul(k).x!.num;
-    const kInv = k.toRed(BN.red(N)).redPow(N.sub(new BN(2)));
-    let s = z
-      .add(r.mul(this.secret))
-      .mul(kInv)
-      .mod(N);
+    const kInv = pow(k, N - 2n, N);
+    let s = ((z + r * this.secret) * kInv) % N;
 
-    if (s.gt(N.div(new BN(2)))) {
-      s = N.sub(s);
+    if (s > N / 2n) {
+      s = N - s;
     }
 
     return new Signature(r, s);
   };
 
   // https://tools.ietf.org/html/rfc6979#section-3.2
-  deterministicK = (z: BN): BN => {
+  deterministicK = (z: bigint): bigint => {
     let k = Buffer.alloc(32, 0);
     let v = Buffer.alloc(32, 1);
 
-    if (z.gt(N)) {
-      z = z.sub(N);
+    if (z > N) {
+      z = z - N;
     }
 
-    const zBytes = z.toBuffer("be", 32);
-    const secretBytes = this.secret.toBuffer("be", 32);
+    const zBytes = toBufferBE(z, 32);
+    const secretBytes = toBufferBE(this.secret, 32);
 
     k = crypto
       .createHmac("sha256", k)
@@ -78,8 +75,8 @@ export class PrivateKey {
         .createHmac("sha256", k)
         .update(v)
         .digest();
-      const candidate = new BN(v, undefined, "be");
-      if (candidate.gte(new BN(1)) && candidate.lt(N)) {
+      const candidate = toBigIntBE(v);
+      if (candidate >= 1n && candidate < N) {
         return candidate;
       }
       k = crypto
@@ -94,6 +91,6 @@ export class PrivateKey {
   };
 
   hex = (): string => {
-    return this.secret.toString("hex").padStart(64, "0");
+    return this.secret.toString(16).padStart(64, "0");
   };
 }

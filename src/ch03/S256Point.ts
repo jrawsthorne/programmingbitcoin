@@ -1,21 +1,20 @@
 import { ECCPoint } from "./ECCPoint";
 import { S256Field, P } from "./S256Field";
-import BN from "bn.js";
 import { Signature } from "./Signature";
 import { SmartBuffer } from "smart-buffer";
-import { hash160, encodeBase58Checksum } from "../helper";
+import { hash160, encodeBase58Checksum, mod, pow } from "../helper";
+import { toBufferBE, toBigIntLE, toBigIntBE } from "bigint-buffer";
 
-const A = 0;
-const B = 7;
+const A = 0n;
+const B = 7n;
 
-export const N = new BN(
-  "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
-  "hex"
+export const N = BigInt(
+  "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"
 );
 
 interface S256PointParams {
-  x?: BN;
-  y?: BN;
+  x?: bigint;
+  y?: bigint;
 }
 
 export class S256Point extends ECCPoint {
@@ -28,51 +27,50 @@ export class S256Point extends ECCPoint {
     });
   }
 
-  verify = (z: BN, sig: Signature): boolean => {
-    const red = BN.red(N);
-    let sInv = sig.s.toRed(red).redPow(N.sub(new BN(2)));
-    let u = z.mul(sInv).mod(N);
-    let v = sig.r.mul(sInv).mod(N);
+  verify = (z: bigint, sig: Signature): boolean => {
+    let sInv = pow(sig.s, N - 2n, N);
+    let u = (z * sInv) % N;
+    let v = (sig.r * sInv) % N;
     const total = G.rmul(u).add(this.rmul(v));
-    return total.x!.num.eq(sig.r);
+    return total.x!.num === sig.r;
   };
 
   sec = (compressed: boolean = true): Buffer => {
     const s = new SmartBuffer();
     if (compressed) {
-      if (this.y!.num.mod(new BN(2)).eq(new BN(0))) {
-        s.writeBuffer(Buffer.alloc(1, 2));
+      if (this.y!.num % 2n === 0n) {
+        s.writeUInt8(2);
       } else {
-        s.writeBuffer(Buffer.alloc(1, 3));
+        s.writeUInt8(3);
       }
-      s.writeBuffer(this.x!.num.toBuffer("be", 32));
+      s.writeBuffer(toBufferBE(this.x!.num, 32));
     } else {
-      s.writeBuffer(Buffer.from("04", "hex"));
-      s.writeBuffer(this.x!.num.toBuffer("be", 32));
-      s.writeBuffer(this.y!.num.toBuffer("be", 32));
+      s.writeUInt8(4);
+      s.writeBuffer(toBufferBE(this.x!.num, 32));
+      s.writeBuffer(toBufferBE(this.y!.num, 32));
     }
     return s.toBuffer();
   };
 
   static parse = (sec: Buffer): S256Point => {
     if (sec[0] === 4) {
-      const x = new BN(sec.slice(1, 33));
-      const y = new BN(sec.slice(33, 65));
+      const x = toBigIntBE(sec.slice(1, 33));
+      const y = toBigIntBE(sec.slice(33, 65));
       return new S256Point({ x, y });
     }
     const isEven = sec[0] === 2;
-    const x = new S256Field(new BN(sec.slice(1)));
+    const x = new S256Field(toBigIntBE(sec.slice(1)));
     // right side of the equation y^2 = x^3 + 7
-    const alpha = new S256Field(x.pow(3).add(new S256Field(B)).num);
+    const alpha = new S256Field(x.pow(3n).add(new S256Field(B)).num);
     // solve for left side
     const beta = alpha.sqrt();
     let evenBeta: S256Field;
     let oddBeta: S256Field;
-    if (beta.num.isEven()) {
+    if (beta.num % 2n === 0n) {
       evenBeta = beta;
-      oddBeta = new S256Field(P.sub(beta.num));
+      oddBeta = new S256Field(P - beta.num);
     } else {
-      evenBeta = new S256Field(P.sub(beta.num));
+      evenBeta = new S256Field(P - beta.num);
       oddBeta = beta;
     }
     return isEven
@@ -95,9 +93,9 @@ export class S256Point extends ECCPoint {
     return encodeBase58Checksum(Buffer.concat([prefix, h160]));
   };
 
-  rmul = (coefficient: number | BN): S256Point => {
-    let coef = BN.isBN(coefficient) ? coefficient : new BN(coefficient);
-    coef = coef.mod(N);
+  rmul = (coefficient: bigint): S256Point => {
+    let coef = coefficient;
+    coef = mod(coef, N);
     const point = super.rmul(coef);
     const x = point.x ? point.x.num : undefined;
     const y = point.y ? point.y.num : undefined;
@@ -111,12 +109,10 @@ export class S256Point extends ECCPoint {
 }
 
 export const G = new S256Point({
-  x: new BN(
-    "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-    "hex"
+  x: BigInt(
+    "0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
   ),
-  y: new BN(
-    "483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8",
-    "hex"
+  y: BigInt(
+    "0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8"
   )
 });

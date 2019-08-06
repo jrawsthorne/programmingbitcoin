@@ -1,91 +1,74 @@
-import BN from "bn.js";
+import { pow, mod } from "../helper";
 
 export class FieldElement {
-  public num: BN;
-  public prime: BN;
-  private red: any;
-
-  constructor(num: BN | number, prime: BN | number) {
-    this.num = BN.isBN(num) ? num : new BN(num);
-    this.prime = BN.isBN(prime) ? prime : new BN(prime);
-    this.red = BN.red(this.prime);
-
-    if (this.num.gte(this.prime) || this.num.isNeg()) {
-      throw new Error(
-        `Num ${this.num.toString()} not in field range 0 to ${this.prime.sub(
-          new BN(1)
-        )}`
-      );
+  constructor(public num: bigint, public prime: bigint) {
+    if (num >= prime || num < 0) {
+      throw new Error(`Num ${num} not in field range 0 to ${prime - 1n}`);
     }
   }
 
   equals = (other: FieldElement): boolean => {
-    return this.num.eq(other.num) && this.prime.eq(other.prime);
+    return this.num === other.num && this.prime === other.prime;
   };
 
   add = (other: FieldElement): FieldElement => {
-    if (!this.prime.eq(other.prime)) {
+    if (this.prime !== other.prime) {
       throw new MismatchedFields(this.prime, other.prime, "add");
     }
-    const num = this.num.add(other.num).mod(this.prime);
+    const num = (this.num + other.num) % this.prime;
     return new FieldElement(num, this.prime);
   };
 
   sub = (other: FieldElement): FieldElement => {
-    if (!this.prime.eq(other.prime)) {
+    if (this.prime !== other.prime) {
       throw new MismatchedFields(this.prime, other.prime, "subtract");
     }
-    // could be negative, use umod to make answer positive
-    const num = this.num.sub(other.num).umod(this.prime);
+    // could be negative so use actual mod not rem
+    const num = mod(this.num - other.num, this.prime);
     return new FieldElement(num, this.prime);
   };
 
   mul = (other: FieldElement): FieldElement => {
-    if (!this.prime.eq(other.prime)) {
+    if (this.prime !== other.prime) {
       throw new MismatchedFields(this.prime, other.prime, "multiply");
     }
-    const num = this.num.mul(other.num).mod(this.prime);
+    const num = (this.num * other.num) % this.prime;
     return new FieldElement(num, this.prime);
   };
 
   // exponent could be negative
-  pow = (exponent: number | BN): FieldElement => {
-    const expo = BN.isBN(exponent) ? exponent : new BN(exponent);
-    const n = expo.umod(this.prime.sub(new BN(1)));
-    const num = this.num
-      .toRed(this.red)
-      .redPow(n)
-      .fromRed();
+  pow = (exponent: bigint): FieldElement => {
+    const n = mod(exponent, this.prime - 1n);
+    const num = pow(this.num, n, this.prime);
     return new FieldElement(num, this.prime);
   };
 
   div = (other: FieldElement): FieldElement => {
-    if (!this.prime.eq(other.prime)) {
+    if (this.prime !== other.prime) {
       throw new MismatchedFields(this.prime, other.prime, "divide");
     }
-    const power = other.num
-      .toRed(this.red)
-      .redPow(this.prime.sub(new BN(2)))
-      .fromRed();
-    const num = this.num.mul(power).mod(this.prime);
+    const num =
+      (this.num * pow(other.num, this.prime - 2n, this.prime)) % this.prime;
     return new FieldElement(num, this.prime);
   };
 
-  rmul = (coefficient: BN | number): FieldElement => {
-    const coef = BN.isBN(coefficient) ? coefficient : new BN(coefficient);
-    const num = this.num.mul(coef).mod(this.prime);
+  rmul = (coefficient: bigint): FieldElement => {
+    if (coefficient < 0) throw Error("rmul coefficient must be > 0");
+    const num = (this.num * coefficient) % this.prime;
     return new FieldElement(num, this.prime);
   };
 
   toString = (): String => {
-    return `FieldElement { num: ${this.num}, prime: ${this.prime} }`;
+    return `FieldElement { num: ${this.num.toString(
+      10
+    )}, prime: ${this.prime.toString(10)} }`;
   };
 }
 
 export class MismatchedFields extends Error {
-  constructor(first: BN, second: BN, operation: string) {
+  constructor(first: bigint, second: bigint, operation: string) {
     super(
-      `Cannot ${operation} two numbers in different Fields ${first.toString()} vs ${second.toString()}`
+      `Cannot ${operation} two numbers in different Fields ${first} vs ${second}`
     );
     this.name = this.constructor.name;
     Error.captureStackTrace(this, this.constructor);

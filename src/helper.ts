@@ -1,5 +1,6 @@
-import BN from "bn.js";
 import crypto from "crypto";
+import { SmartBuffer } from "smart-buffer";
+import { toBigIntLE, toBigIntBE, toBufferBE, toBufferLE } from "bigint-buffer";
 
 const ripemd160 = () => crypto.createHash("ripemd160");
 const sha256 = () => crypto.createHash("sha256");
@@ -30,26 +31,65 @@ export const hash160 = (s: Buffer): Buffer => {
   );
 };
 
+// bigint mod that produces a positive value
+export const mod = function(n: bigint, m: bigint): bigint {
+  return ((n % m) + m) % m;
+};
+
+// modular exponentiation
+export const pow = function(
+  base: bigint,
+  exponent: bigint,
+  modulus: bigint
+): bigint {
+  if (modulus === 1n) return 0n;
+  let result = 1n;
+  base = mod(base, modulus);
+  while (exponent > 0) {
+    if (exponent & 1n) {
+      result = mod(result * base, modulus);
+    }
+    exponent = exponent >> 1n;
+    base = mod(base * base, modulus);
+  }
+  return result;
+};
+
 export const u64ToEndian = (
   number: number,
   endian: "little" | "big" = "little"
 ): Buffer => {
-  return new BN(number).toBuffer(endian === "little" ? "le" : "be", 8);
+  return endian === "big"
+    ? toBufferBE(BigInt(number), 8)
+    : toBufferLE(BigInt(number), 8);
 };
 
 export const randInt = (max: number) => {
   return Math.floor(Math.random() * Math.floor(max));
 };
 
-export const randBN = async (min: BN, max: BN): Promise<BN> => {
-  if (min.gt(max)) {
+export const bigintBytes = (num: bigint): number => {
+  let bytesNeeded = 0;
+  let bitsNeeded = 0;
+  while (num > 0) {
+    if (bitsNeeded % 8 === 0) {
+      bytesNeeded += 1;
+    }
+    bitsNeeded += 1;
+    num = num >> 1n;
+  }
+  return bytesNeeded;
+};
+
+export const randBN = async (min: bigint, max: bigint): Promise<bigint> => {
+  if (min > max) {
     throw Error("Max must be greater than min");
   }
-  const range = max.sub(min);
-  const randomBytes = await crypto.randomBytes(range.byteLength());
-  const randomValue = new BN(randomBytes);
-  if (randomValue.lte(range)) {
-    return min.add(randomValue);
+  const range = max - min;
+  const randomBytes = await crypto.randomBytes(bigintBytes(range));
+  const randomValue = toBigIntLE(randomBytes);
+  if (randomValue < range) {
+    return min + randomValue;
   } else {
     return randBN(min, max);
   }
@@ -86,6 +126,19 @@ export const encodeVarint = (integer: number): Buffer => {
   }
 };
 
+export const readVarint = (s: SmartBuffer): bigint => {
+  const i = s.readUInt8();
+  if (i === 0xfd) {
+    return toBigIntLE(s.readBuffer(2));
+  } else if (i === 0xfe) {
+    return toBigIntLE(s.readBuffer(4));
+  } else if (i === 0xff) {
+    return toBigIntLE(s.readBuffer(8));
+  } else {
+    return BigInt(i);
+  }
+};
+
 const BASE58_ALPHABET =
   "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
@@ -98,14 +151,13 @@ export const encodeBase58 = (s: Buffer): string => {
       break;
     }
   }
-  let num = new BN(s);
+  let num = toBigIntBE(s);
   const prefix = "1".repeat(count);
   let result = "";
-  while (num.gt(new BN(0))) {
-    const newNum = num.div(new BN(58));
-    const mod = num.mod(new BN(58));
-    num = newNum;
-    result = BASE58_ALPHABET[mod.toNumber()] + result;
+  while (num > 0) {
+    const mod = num % 58n;
+    num = num / 58n;
+    result = BASE58_ALPHABET[Number(mod)] + result;
   }
 
   return prefix + result;

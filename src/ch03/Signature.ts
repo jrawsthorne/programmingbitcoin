@@ -1,10 +1,11 @@
-import BN from "bn.js";
 import { SmartBuffer } from "smart-buffer";
+import { toBufferBE, toBigIntBE } from "bigint-buffer";
+
 export class Signature {
-  constructor(public r: BN, public s: BN) {}
+  constructor(public r: bigint, public s: bigint) {}
 
   der = (): Buffer => {
-    let rbin = this.r.toBuffer("be", 32);
+    let rbin = toBufferBE(this.r, 32);
 
     // remove all null bytes at the beginning
     rbin = rbin.slice(rbin.findIndex(byte => byte !== 0));
@@ -19,7 +20,7 @@ export class Signature {
       Buffer.from([rbin.length]),
       rbin
     ]);
-    let sbin = this.s.toBuffer("be", 32);
+    let sbin = toBufferBE(this.s, 32);
     // remove all null bytes at the beginning
     sbin = sbin.slice(sbin.findIndex(byte => byte !== 0));
     // if rbin has a high bit, add a 0x00
@@ -54,13 +55,13 @@ export class Signature {
       throw Error("Bad Signature marker");
     }
     const rlength = sig.readUInt8();
-    const r = new BN(sig.readBuffer(rlength), undefined, "be");
+    const r = toBigIntBE(sig.readBuffer(rlength));
     marker = sig.readUInt8();
     if (marker !== 0x02) {
       throw Error("Bad Signature marker");
     }
     const slength = sig.readUInt8();
-    const s = new BN(sig.readBuffer(slength), undefined, "be");
+    const s = toBigIntBE(sig.readBuffer(slength));
     if (signature.length !== 6 + rlength + slength) {
       throw Error("Signature too long");
     }

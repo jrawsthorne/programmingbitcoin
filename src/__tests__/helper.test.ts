@@ -1,4 +1,5 @@
-import { encodeVarint, encodeBase58 } from "../helper";
+import { encodeVarint, encodeBase58, readVarint } from "../helper";
+import { SmartBuffer } from "smart-buffer";
 
 test("encode varint", () => {
   // 8 bit
@@ -15,6 +16,23 @@ test("encode varint", () => {
   expect(() => encodeVarint(18446744073709551615)).toThrowError(
     "Integer too large"
   );
+});
+
+test("read varint", () => {
+  // 8 bit
+  expect(readVarint(SmartBuffer.fromBuffer(Buffer.alloc(1, 1)))).toEqual(1n);
+  // 16 bit
+  expect(
+    readVarint(SmartBuffer.fromBuffer(Buffer.from("fdffff", "hex")))
+  ).toEqual(65535n);
+  // // 32 bit
+  expect(
+    readVarint(SmartBuffer.fromBuffer(Buffer.from("feffffff7f", "hex")))
+  ).toEqual(2147483647n);
+  // // 64 bit
+  expect(
+    readVarint(SmartBuffer.fromBuffer(Buffer.from("ffffffffffffffffff", "hex")))
+  ).toEqual(18446744073709551615n);
 });
 
 test("encode base58", () => {
