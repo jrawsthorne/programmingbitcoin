@@ -59,7 +59,7 @@ export class Tx {
       inputSum += await txIn.value(testnet);
     }
     for (const txOut of this.txOuts) {
-      outputSum += await txOut.amount;
+      outputSum += txOut.amount;
     }
     return inputSum - outputSum;
   };
