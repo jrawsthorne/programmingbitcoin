@@ -13,12 +13,12 @@ export class Script {
     return new Script([...this.cmds, ...other.cmds]);
   };
 
-  evaluate = (z: Buffer): boolean => {
+  evaluate = (z: bigint): boolean => {
     const cmds: Cmds = [...this.cmds];
     const stack: Stack = [];
     const altStack: Stack = [];
     while (cmds.length > 0) {
-      const cmd = cmds.pop()!;
+      const cmd = cmds.shift()!;
       if (typeof cmd === "number") {
         const operation = OP_CODE_FUNCTIONS[cmd];
         if ([99, 100].includes(cmd)) {

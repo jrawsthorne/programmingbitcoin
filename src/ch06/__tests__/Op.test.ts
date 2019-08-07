@@ -1,4 +1,16 @@
-import { opHash160, encodeNum, decodeNum, Stack, opChecksig } from "../Op";
+import {
+  opHash160,
+  encodeNum,
+  decodeNum,
+  Stack,
+  opChecksig,
+  opVerify,
+  op2dup,
+  opSwap,
+  opNot,
+  opSha1
+} from "../Op";
+import { Script } from "../Script";
 
 test("opHash160", () => {
   const stack = [Buffer.from("hello world")];
@@ -37,4 +49,52 @@ test("opChecksig", () => {
   const stack: Stack = [sig, sec];
   expect(opChecksig(stack, z)).toBe(true);
   expect(decodeNum(stack[0])).toBe(1);
+});
+
+test("evaluate", () => {
+  const scriptPubkey = new Script([0x76, 0x76, 0x95, 0x93, 0x56, 0x87]);
+  const scriptSig = new Script([0x52]);
+  const combinedScript = scriptSig.add(scriptPubkey);
+  expect(combinedScript.evaluate(0n)).toBe(true);
+});
+
+test("opVerify", () => {
+  expect(opVerify([Buffer.alloc(0)])).toBe(false);
+  expect(opVerify([Buffer.alloc(1, 1)])).toBe(true);
+});
+
+test("op2dup", () => {
+  const stack = [Buffer.from("52", "hex"), Buffer.from("56", "hex")];
+  expect(op2dup(stack)).toBe(true);
+  expect(stack[2].equals(Buffer.from("52", "hex"))).toBe(true);
+  expect(stack[3].equals(Buffer.from("56", "hex"))).toBe(true);
+});
+
+test("opSwap", () => {
+  const stack = [Buffer.from("52", "hex"), Buffer.from("56", "hex")];
+  expect(opSwap(stack)).toBe(true);
+  expect(stack[0].equals(Buffer.from("56", "hex"))).toBe(true);
+  expect(stack[1].equals(Buffer.from("52", "hex"))).toBe(true);
+});
+
+test("opNot", () => {
+  let stack = [Buffer.alloc(1, 0)];
+  expect(opNot(stack)).toBe(true);
+  expect(stack[0].equals(Buffer.alloc(1, 1)));
+  stack = [Buffer.alloc(1, 12)];
+  expect(opNot(stack)).toBe(true);
+  expect(stack[0].equals(Buffer.alloc(1, 0)));
+  stack = [Buffer.alloc(1, 1)];
+  expect(opNot(stack)).toBe(true);
+  expect(stack[0].equals(Buffer.alloc(1, 0)));
+});
+
+test("opSha1", () => {
+  const stack = [Buffer.from("hello world")];
+  expect(opSha1(stack)).toBe(true);
+  expect(
+    stack[0].equals(
+      Buffer.from("2aae6c35c94fcfb415dbe95f408b9ce91ee846ed", "hex")
+    )
+  ).toBe(true);
 });

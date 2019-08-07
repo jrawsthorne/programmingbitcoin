@@ -1,6 +1,80 @@
-import { hash256, hash160 } from "../helper";
+import { hash256, hash160, sha1 } from "../helper";
 import { Signature } from "../ch03/Signature";
 import { S256Point } from "../ch03/S256Point";
+
+export const op6 = (stack: Stack): boolean => {
+  stack.push(encodeNum(6));
+  return true;
+};
+
+export const op2 = (stack: Stack): boolean => {
+  stack.push(encodeNum(2));
+  return true;
+};
+
+export const opVerify = (stack: Stack): boolean => {
+  if (stack.length < 1) return false;
+  const element = stack.pop()!;
+  return decodeNum(element) === 1;
+};
+
+export const opEqual = (stack: Stack): boolean => {
+  if (stack.length < 2) return false;
+  const element1 = stack.pop()!;
+  const element2 = stack.pop()!;
+  if (element1.equals(element2)) {
+    stack.push(encodeNum(1));
+  } else {
+    stack.push(encodeNum(0));
+  }
+  return true;
+};
+
+export const opAdd = (stack: Stack): boolean => {
+  if (stack.length < 2) return false;
+  const element1 = decodeNum(stack.pop()!);
+  const element2 = decodeNum(stack.pop()!);
+  stack.push(encodeNum(element1 + element2));
+  return true;
+};
+
+export const opMul = (stack: Stack): boolean => {
+  if (stack.length < 2) return false;
+  const element1 = decodeNum(stack.pop()!);
+  const element2 = decodeNum(stack.pop()!);
+  stack.push(encodeNum(element1 * element2));
+  return true;
+};
+
+export const op2dup = (stack: Stack): boolean => {
+  if (stack.length < 2) return false;
+  stack.push(...stack.slice(stack.length - 2, stack.length));
+  return true;
+};
+
+export const opSwap = (stack: Stack): boolean => {
+  if (stack.length < 2) return false;
+  stack.push(...stack.splice(stack.length - 2, 1));
+  return true;
+};
+
+export const opNot = (stack: Stack): boolean => {
+  if (stack.length < 1) return false;
+  const element = stack.pop()!;
+  if (decodeNum(element) === 0) {
+    stack.push(encodeNum(1));
+  } else {
+    stack.push(encodeNum(0));
+  }
+  return true;
+};
+
+export const opSha1 = (stack: Stack): boolean => {
+  if (stack.length < 1) return false;
+  const element = stack.pop()!;
+  stack.push(sha1(element));
+  return true;
+};
 
 export const opDup = (stack: Stack): boolean => {
   if (stack.length < 1) return false;
@@ -95,7 +169,17 @@ type FUNCTIONS = {
 };
 
 export const OP_CODE_FUNCTIONS: FUNCTIONS = {
+  82: op2,
+  86: op6,
+  105: opVerify,
+  110: op2dup,
+  124: opSwap,
+  135: opEqual,
+  145: opNot,
+  147: opAdd,
+  149: opMul,
   118: opDup,
+  167: opSha1,
   169: opHash160,
   170: opHash256
 };
@@ -105,7 +189,17 @@ type NAMES = {
 };
 
 export const OP_CODE_NAMES: NAMES = {
+  82: "OP_2",
+  86: "OP_6",
+  105: "OP_VERIFY",
+  110: "OP_2DUP",
+  124: "OP_SWAP",
+  135: "OP_EQUAL",
+  145: "OP_NOT",
+  147: "OP_ADD",
+  149: "OP_MUL",
   118: "OP_DUP",
+  167: "OP_SHA1",
   169: "OP_HASH160",
   170: "OP_HASH256"
 };

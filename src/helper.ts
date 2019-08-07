@@ -4,31 +4,34 @@ import { toBigIntLE, toBigIntBE, toBufferBE, toBufferLE } from "bigint-buffer";
 
 const ripemd160 = () => crypto.createHash("ripemd160");
 const sha256 = () => crypto.createHash("sha256");
+const sha1Hash = () => crypto.createHash("sha1");
 
 // Double sha256 hash
 export const hash256 = (s: Buffer): Buffer => {
-  return Buffer.from(
-    sha256()
-      .update(
-        sha256()
-          .update(s)
-          .digest()
-      )
-      .digest()
-  );
+  return sha256()
+    .update(
+      sha256()
+        .update(s)
+        .digest()
+    )
+    .digest();
 };
 
 // sha256 followed by ripemd160
 export const hash160 = (s: Buffer): Buffer => {
-  return Buffer.from(
-    ripemd160()
-      .update(
-        sha256()
-          .update(s)
-          .digest()
-      )
-      .digest()
-  );
+  return ripemd160()
+    .update(
+      sha256()
+        .update(s)
+        .digest()
+    )
+    .digest();
+};
+
+export const sha1 = (s: Buffer): Buffer => {
+  return sha1Hash()
+    .update(s)
+    .digest();
 };
 
 // bigint mod that produces a positive value
