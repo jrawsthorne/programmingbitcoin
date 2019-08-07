@@ -59,9 +59,7 @@ export class FieldElement {
   };
 
   toString = (): String => {
-    return `FieldElement { num: ${this.num.toString(
-      10
-    )}, prime: ${this.prime.toString(10)} }`;
+    return `FieldElement { num: ${this.num}, prime: ${this.prime} }`;
   };
 }
 

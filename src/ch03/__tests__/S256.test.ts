@@ -4,7 +4,7 @@ import { Signature } from "../Signature";
 import { randBN } from "../../helper";
 
 test("order", () => {
-  expect(G.rmul(N).isPointAtInfinity());
+  expect(G.rmul(N).isInfinity());
 });
 
 test("pubpoint", () => {

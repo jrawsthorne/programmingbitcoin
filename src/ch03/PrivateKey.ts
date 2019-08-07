@@ -4,6 +4,13 @@ import crypto from "crypto";
 import { encodeBase58Checksum, pow } from "../helper";
 import { toBufferBE, toBigIntBE } from "bigint-buffer";
 
+const sha256HMAC = (key: Buffer, data: Buffer): Buffer => {
+  return crypto
+    .createHmac("sha256", key)
+    .update(data)
+    .digest();
+};
+
 export class PrivateKey {
   public point: S256Point;
 
@@ -53,40 +60,25 @@ export class PrivateKey {
     const zBytes = toBufferBE(z, 32);
     const secretBytes = toBufferBE(this.secret, 32);
 
-    k = crypto
-      .createHmac("sha256", k)
-      .update(Buffer.concat([v, Buffer.alloc(1, 0), secretBytes, zBytes]))
-      .digest();
-    v = crypto
-      .createHmac("sha256", k)
-      .update(v)
-      .digest();
-    k = crypto
-      .createHmac("sha256", k)
-      .update(Buffer.concat([v, Buffer.alloc(1, 1), secretBytes, zBytes]))
-      .digest();
-    v = crypto
-      .createHmac("sha256", k)
-      .update(v)
-      .digest();
+    k = sha256HMAC(
+      k,
+      Buffer.concat([v, Buffer.alloc(1, 0), secretBytes, zBytes])
+    );
+    v = sha256HMAC(k, v);
+    k = sha256HMAC(
+      k,
+      Buffer.concat([v, Buffer.alloc(1, 1), secretBytes, zBytes])
+    );
+    v = sha256HMAC(k, v);
 
     while (true) {
-      v = crypto
-        .createHmac("sha256", k)
-        .update(v)
-        .digest();
+      v = sha256HMAC(k, v);
       const candidate = toBigIntBE(v);
       if (candidate >= 1n && candidate < N) {
         return candidate;
       }
-      k = crypto
-        .createHmac("sha256", k)
-        .update(Buffer.concat([v, Buffer.alloc(1, 0)]))
-        .digest();
-      v = crypto
-        .createHmac("sha256", k)
-        .update(v)
-        .digest();
+      k = sha256HMAC(k, Buffer.concat([v, Buffer.alloc(1, 0)]));
+      v = sha256HMAC(k, v);
     }
   };
 

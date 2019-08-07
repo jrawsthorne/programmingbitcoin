@@ -69,6 +69,6 @@ export class Signature {
   };
 
   toString = (): string => {
-    return `Signature(${this.r.toString()},${this.s.toString()})`;
+    return `Signature(${this.r},${this.s})`;
   };
 }

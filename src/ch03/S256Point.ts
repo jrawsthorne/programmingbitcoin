@@ -19,12 +19,12 @@ interface S256PointParams {
 
 export class S256Point extends ECCPoint {
   constructor({ x, y }: S256PointParams) {
-    super({
-      x: x === undefined ? x : new S256Field(x),
-      y: y === undefined ? y : new S256Field(y),
-      a: new S256Field(A),
-      b: new S256Field(B)
-    });
+    super(
+      x === undefined ? x : new S256Field(x),
+      y === undefined ? y : new S256Field(y),
+      new S256Field(A),
+      new S256Field(B)
+    );
   }
 
   verify = (z: bigint, sig: Signature): boolean => {
@@ -103,7 +103,7 @@ export class S256Point extends ECCPoint {
   };
 
   toString = (): string => {
-    if (this.isPointAtInfinity()) return "S256Point(infinity)";
+    if (this.isInfinity()) return "S256Point(infinity)";
     else return `S256Point(${this.x!.num},${this.y!.num})`;
   };
 }

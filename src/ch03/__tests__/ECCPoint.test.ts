@@ -11,12 +11,12 @@ test("on curve", () => {
   for (const [xRaw, yRaw] of validPoints) {
     const x = new FieldElement(xRaw, prime);
     const y = new FieldElement(yRaw, prime);
-    new ECCPoint({ x, y, a, b });
+    new ECCPoint(x, y, a, b);
   }
   for (const [xRaw, yRaw] of invalidPoints) {
     const x = new FieldElement(xRaw, prime);
     const y = new FieldElement(yRaw, prime);
-    expect(() => new ECCPoint({ x, y, a, b })).toThrowError(
+    expect(() => new ECCPoint(x, y, a, b)).toThrowError(
       `(FieldElement { num: ${x.num}, prime: ${prime} }, FieldElement { num: ${
         y.num
       }, prime: ${prime} }) is not on the curve`
@@ -39,51 +39,53 @@ test("add", () => {
   for (const [x1_raw, y1_raw, x2_raw, y2_raw, x3_raw, y3_raw] of additions) {
     const x1 = new FieldElement(x1_raw, prime);
     const y1 = new FieldElement(y1_raw, prime);
-    const p1 = new ECCPoint({ x: x1, y: y1, a, b });
+    const p1 = new ECCPoint(x1, y1, a, b);
     const x2 = new FieldElement(x2_raw, prime);
     const y2 = new FieldElement(y2_raw, prime);
-    const p2 = new ECCPoint({ x: x2, y: y2, a, b });
+    const p2 = new ECCPoint(x2, y2, a, b);
     const x3 = new FieldElement(x3_raw, prime);
     const y3 = new FieldElement(y3_raw, prime);
-    const p3 = new ECCPoint({ x: x3, y: y3, a, b });
+    const p3 = new ECCPoint(x3, y3, a, b);
     expect(p1.add(p2).equals(p3)).toBe(true);
   }
 
   // other + 0 = other
-  let p1 = new ECCPoint({ a, b });
-  let p2 = new ECCPoint({ a, b });
-  expect(p1.add(p2).isPointAtInfinity()).toBe(true);
+  let p1 = new ECCPoint(undefined, undefined, a, b);
+  let p2 = p1;
+  expect(p1.add(p2).isInfinity()).toBe(true);
 
   // 0 + this = this
   let x = new FieldElement(192n, prime);
   let y = new FieldElement(105n, prime);
-  p2 = new ECCPoint({ x, y, a, b });
+  p2 = new ECCPoint(x, y, a, b);
   expect(p2.add(p1).equals(p2)).toBe(true);
 
   // the points are vertically opposite
   y = new FieldElement(118n, prime);
-  p1 = new ECCPoint({ x, y, a, b });
-  expect(p2.add(p1).isPointAtInfinity()).toBe(true);
+  p1 = new ECCPoint(x, y, a, b);
+  expect(p2.add(p1).isInfinity()).toBe(true);
 
   // tangent to the vertical line
   x = new FieldElement(6n, prime);
   y = new FieldElement(0n, prime);
-  p1 = new ECCPoint({ x, y, a, b });
-  expect(p1.add(p1).isPointAtInfinity()).toBe(true);
+  p1 = new ECCPoint(x, y, a, b);
+  expect(p1.add(p1).isInfinity()).toBe(true);
 
   // p1 = p2
   x = new FieldElement(68n, prime);
   y = new FieldElement(3n, prime);
-  p1 = new ECCPoint({ x, y, a, b });
+  p1 = new ECCPoint(x, y, a, b);
   expect(
-    p1.add(p1).equals(
-      new ECCPoint({
-        x: new FieldElement(121n, prime),
-        y: new FieldElement(111n, prime),
-        a,
-        b
-      })
-    )
+    p1
+      .add(p1)
+      .equals(
+        new ECCPoint(
+          new FieldElement(121n, prime),
+          new FieldElement(111n, prime),
+          a,
+          b
+        )
+      )
   ).toBe(true);
 });
 
@@ -112,15 +114,15 @@ test("rmul", () => {
   for (const [s, x1_raw, y1_raw, x2_raw, y2_raw] of multiplications) {
     const x1 = new FieldElement(x1_raw, prime);
     const y1 = new FieldElement(y1_raw, prime);
-    const p1 = new ECCPoint({ x: x1, y: y1, a, b });
+    const p1 = new ECCPoint(x1, y1, a, b);
     let p2: ECCPoint;
     // initialize the second point based on whether it's the point at infinity
     if (x2_raw === null) {
-      p2 = new ECCPoint({ a, b });
+      p2 = new ECCPoint(undefined, undefined, a, b);
     } else {
       const x2 = new FieldElement(x2_raw, prime);
       const y2 = new FieldElement(y2_raw!, prime);
-      p2 = new ECCPoint({ x: x2, y: y2, a, b });
+      p2 = new ECCPoint(x2, y2, a, b);
     }
     expect(p1.rmul(s!).equals(p2)).toBe(true);
   }
