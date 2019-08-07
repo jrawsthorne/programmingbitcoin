@@ -1,13 +1,55 @@
 import { readVarint, encodeVarint } from "../helper";
 import { SmartBuffer } from "smart-buffer";
-import { OP_CODE_NAMES } from "./Op";
+import { OP_CODE_NAMES, OP_CODE_FUNCTIONS, Stack, Cmds } from "./Op";
 
 export class Script {
-  public cmds: (Buffer | number)[];
+  public cmds: Cmds;
 
-  constructor(cmds?: (Buffer | number)[]) {
+  constructor(cmds?: Cmds) {
     this.cmds = cmds ? cmds : [];
   }
+
+  add = (other: Script): Script => {
+    return new Script([...this.cmds, ...other.cmds]);
+  };
+
+  evaluate = (z: Buffer): boolean => {
+    const cmds: Cmds = [...this.cmds];
+    const stack: Stack = [];
+    const altStack: Stack = [];
+    while (cmds.length > 0) {
+      const cmd = cmds.pop()!;
+      if (typeof cmd === "number") {
+        const operation = OP_CODE_FUNCTIONS[cmd];
+        if ([99, 100].includes(cmd)) {
+          if (!operation(stack, cmds)) {
+            console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
+            return false;
+          }
+        } else if ([107, 108].includes(cmd)) {
+          if (!operation(stack, altStack)) {
+            console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
+            return false;
+          }
+        } else if ([172, 173, 174, 175].includes(cmd)) {
+          if (!operation(stack, z)) {
+            console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
+            return false;
+          }
+        } else {
+          if (!operation(stack)) {
+            console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
+            return false;
+          }
+        }
+      } else {
+        stack.push(cmd);
+      }
+    }
+    if (stack.length === 0) return false;
+    if (stack.pop()!.equals(Buffer.alloc(0))) return false;
+    return true;
+  };
 
   static parse = (s: SmartBuffer): Script => {
     const length = readVarint(s);
