@@ -7,12 +7,16 @@ export class TxIn {
   constructor(
     public prevTx: Buffer,
     public prevIndex: number,
-    public scriptSig: Script,
+    public scriptSig: Script = new Script(),
     public sequence: number = 0xffffffff
   ) {}
 
   static parse = (s: SmartBuffer) => {
-    const prevTx = s.readBuffer(32).reverse();
+    // have to copy memory to prevent mutation
+    const prevTx = Buffer.alloc(32);
+    s.readBuffer(32).copy(prevTx);
+    // encode big endian
+    prevTx.reverse();
     const prevIndex = s.readUInt32LE();
     const scriptSig = Script.parse(s);
     const sequence = s.readUInt32LE();
@@ -22,6 +26,8 @@ export class TxIn {
   serialize = (): Buffer => {
     const s = new SmartBuffer();
     s.writeBuffer(this.prevTx.reverse());
+    // reverse mutates the memory so reverse it back again
+    this.prevTx.reverse();
     s.writeUInt32LE(this.prevIndex);
     s.writeBuffer(this.scriptSig.serialize());
     s.writeUInt32LE(this.sequence);

@@ -2,6 +2,11 @@ import { hash256, hash160, sha1 } from "../helper";
 import { Signature } from "../ch03/Signature";
 import { S256Point } from "../ch03/S256Point";
 
+export const op0 = (stack: Stack): boolean => {
+  stack.push(encodeNum(0));
+  return true;
+};
+
 export const op6 = (stack: Stack): boolean => {
   stack.push(encodeNum(6));
   return true;
@@ -28,6 +33,10 @@ export const opEqual = (stack: Stack): boolean => {
     stack.push(encodeNum(0));
   }
   return true;
+};
+
+export const opEqualVerify = (stack: Stack): boolean => {
+  return opEqual(stack) && opVerify(stack);
 };
 
 export const opAdd = (stack: Stack): boolean => {
@@ -169,19 +178,22 @@ type FUNCTIONS = {
 };
 
 export const OP_CODE_FUNCTIONS: FUNCTIONS = {
+  0: op0,
   82: op2,
   86: op6,
   105: opVerify,
   110: op2dup,
   124: opSwap,
   135: opEqual,
+  136: opEqualVerify,
   145: opNot,
   147: opAdd,
   149: opMul,
   118: opDup,
   167: opSha1,
   169: opHash160,
-  170: opHash256
+  170: opHash256,
+  172: opChecksig
 };
 
 type NAMES = {
@@ -189,17 +201,20 @@ type NAMES = {
 };
 
 export const OP_CODE_NAMES: NAMES = {
+  0: "OP_0",
   82: "OP_2",
   86: "OP_6",
   105: "OP_VERIFY",
   110: "OP_2DUP",
   124: "OP_SWAP",
   135: "OP_EQUAL",
+  136: "OP_EQUALVERIFY",
   145: "OP_NOT",
   147: "OP_ADD",
   149: "OP_MUL",
   118: "OP_DUP",
   167: "OP_SHA1",
   169: "OP_HASH160",
-  170: "OP_HASH256"
+  170: "OP_HASH256",
+  172: "OP_CHECKSIG"
 };
