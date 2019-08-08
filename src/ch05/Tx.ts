@@ -1,7 +1,10 @@
-import { hash256, readVarint, encodeVarint } from "../helper";
+import { hash256, readVarint, encodeVarint, SIGHASH_ALL } from "../helper";
 import { TxIn } from "./TxIn";
 import { SmartBuffer } from "smart-buffer";
 import { TxOut } from "./TxOut";
+import { toBigIntBE } from "bigint-buffer";
+import { PrivateKey } from "../ch03/PrivateKey";
+import { Script } from "../ch06/Script";
 
 export class Tx {
   constructor(
@@ -48,7 +51,7 @@ export class Tx {
     return this.hash().toString("hex");
   };
 
-  hash = () => {
+  hash = (): Buffer => {
     return hash256(this.serialize()).reverse();
   };
 
@@ -62,6 +65,74 @@ export class Tx {
       outputSum += txOut.amount;
     }
     return inputSum - outputSum;
+  };
+
+  sigHash = async (inutIndex: number): Promise<bigint> => {
+    const s = new SmartBuffer();
+    s.writeUInt32LE(this.version);
+    s.writeBuffer(encodeVarint(this.txIns.length));
+    for (const [i, txIn] of this.txIns.entries()) {
+      if (i === inutIndex) {
+        s.writeBuffer(
+          new TxIn(
+            txIn.prevTx,
+            txIn.prevIndex,
+            await txIn.scriptPubkey(this.testnet),
+            txIn.sequence
+          ).serialize()
+        );
+      } else {
+        s.writeBuffer(
+          new TxIn(
+            txIn.prevTx,
+            txIn.prevIndex,
+            undefined,
+            txIn.sequence
+          ).serialize()
+        );
+      }
+    }
+    s.writeBuffer(encodeVarint(this.txOuts.length));
+    for (const txOut of this.txOuts) {
+      s.writeBuffer(txOut.serialize());
+    }
+    s.writeUInt32LE(this.locktime);
+    s.writeUInt32LE(SIGHASH_ALL);
+    const h256 = hash256(s.toBuffer());
+    return toBigIntBE(h256);
+  };
+
+  verifyInput = async (inputIndex: number): Promise<boolean> => {
+    const txIn = this.txIns[inputIndex];
+    const scriptPubkey = await txIn.scriptPubkey(this.testnet);
+    const z = await this.sigHash(inputIndex);
+    const combinedScript = txIn.scriptSig.add(scriptPubkey);
+    return combinedScript.evaluate(z);
+  };
+
+  verify = async (): Promise<boolean> => {
+    if ((await this.fee()) < 0) {
+      return false;
+    }
+    for (let i = 0; i < this.txIns.length; i++) {
+      if (!(await this.verifyInput(i))) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  signInput = async (
+    inputIndex: number,
+    privateKey: PrivateKey,
+    compressed: boolean = true
+  ): Promise<boolean> => {
+    const z = await this.sigHash(0);
+    const der = privateKey.sign(z).der();
+    const sig = Buffer.concat([der, Buffer.alloc(1, SIGHASH_ALL)]);
+    const sec = privateKey.point.sec(compressed);
+    this.txIns[0].scriptSig = new Script([sig, sec]);
+    return this.verifyInput(inputIndex);
   };
 
   toString = (): string => {

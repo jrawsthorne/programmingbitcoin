@@ -2,6 +2,10 @@ import { readVarint, encodeVarint } from "../helper";
 import { SmartBuffer } from "smart-buffer";
 import { OP_CODE_NAMES, OP_CODE_FUNCTIONS, Stack, Cmds } from "./Op";
 
+export const p2pkhScript = (h160: Buffer): Script => {
+  return new Script([0x76, 0xa9, h160, 0x88, 0xac]);
+};
+
 export class Script {
   public cmds: Cmds;
 

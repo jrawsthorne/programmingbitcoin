@@ -6,6 +6,10 @@ const ripemd160 = () => crypto.createHash("ripemd160");
 const sha256 = () => crypto.createHash("sha256");
 const sha1Hash = () => crypto.createHash("sha1");
 
+export const SIGHASH_ALL = 1;
+export const SIGHASH_NONE = 2;
+export const SIGHASH_SINGLE = 3;
+
 // Double sha256 hash
 export const hash256 = (s: Buffer): Buffer => {
   return sha256()
@@ -164,6 +168,45 @@ export const encodeBase58 = (s: Buffer): string => {
   }
 
   return prefix + result;
+};
+
+// Decode bas58 encoded string of format [n-4 bytes][4 byte hash256 checksum]
+export const decodeBase58 = (s: string, byteLength: number) => {
+  let num = 0n;
+  for (const c of s) {
+    num *= 58n;
+    num += BigInt(BASE58_ALPHABET.indexOf(c));
+  }
+  let combined = toBufferBE(num, byteLength);
+  // weird bug https://github.com/no2chem/bigint-buffer/issues/12
+  while (num > 0 && combined[byteLength - 1] === 0) {
+    combined = toBufferBE(num, byteLength);
+  }
+  const expectedChecksum = combined.slice(combined.length - 4);
+  const calculatedChecksum = hash256(
+    combined.slice(0, combined.length - 4)
+  ).slice(0, 4);
+  if (!expectedChecksum.equals(calculatedChecksum)) {
+    throw Error(
+      `Checksum mismatch: ${expectedChecksum.toString(
+        "hex"
+      )} vs ${calculatedChecksum.toString("hex")}`
+    );
+  }
+  return combined.slice(1, combined.length - 4);
+};
+
+export const decodeBase58Wif = (
+  wif: string,
+  compressed: boolean = true
+): Buffer => {
+  const byteLength = compressed ? 38 : 37;
+  const decoded = decodeBase58(wif, byteLength);
+  return compressed ? decoded.slice(0, decoded.length - 1) : decoded;
+};
+
+export const decodeBase58Address = (address: string): Buffer => {
+  return decodeBase58(address, 25);
 };
 
 export const encodeBase58Checksum = (b: Buffer): string => {

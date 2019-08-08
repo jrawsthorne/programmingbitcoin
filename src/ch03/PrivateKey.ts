@@ -1,7 +1,7 @@
 import { S256Point, G, N } from "./S256Point";
 import { Signature } from "./Signature";
 import crypto from "crypto";
-import { encodeBase58Checksum, pow } from "../helper";
+import { encodeBase58Checksum, pow, decodeBase58Wif } from "../helper";
 import { toBufferBE, toBigIntBE } from "bigint-buffer";
 
 const sha256HMAC = (key: Buffer, data: Buffer): Buffer => {
@@ -33,6 +33,12 @@ export class PrivateKey {
       suffix = Buffer.alloc(0);
     }
     return encodeBase58Checksum(Buffer.concat([prefix, secretBytes, suffix]));
+  };
+
+  static fromWif = (wif: string, compressed: boolean = true): PrivateKey => {
+    const decoded = decodeBase58Wif(wif, compressed);
+    const pkBuf = toBigIntBE(decoded);
+    return new PrivateKey(pkBuf);
   };
 
   sign = (z: bigint): Signature => {
