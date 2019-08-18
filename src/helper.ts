@@ -38,6 +38,15 @@ export const sha1 = (s: Buffer): Buffer => {
     .digest();
 };
 
+// reverse buffer byte order
+export const reverseBuffer = (buffer: Buffer): Buffer => {
+  const reversed = Buffer.alloc(buffer.byteLength);
+  for (const [i, byte] of buffer.entries()) {
+    reversed[buffer.byteLength - i - 1] = byte;
+  }
+  return reversed;
+};
+
 // bigint mod that produces a positive value
 export const mod = function(n: bigint, m: bigint): bigint {
   return ((n % m) + m) % m;
