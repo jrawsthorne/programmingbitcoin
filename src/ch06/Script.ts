@@ -1,6 +1,6 @@
 import { readVarint, encodeVarint } from "../helper";
 import { SmartBuffer } from "smart-buffer";
-import { OP_CODE_NAMES, OP_CODE_FUNCTIONS, Stack, Cmds } from "./Op";
+import { OP_CODE_NAMES, OP_CODE_FUNCTIONS, Stack, Cmds, Opcodes } from "./Op";
 
 export const p2pkhScript = (h160: Buffer): Script => {
   return new Script([0x76, 0xa9, h160, 0x88, 0xac]);
@@ -25,26 +25,37 @@ export class Script {
       const cmd = cmds.shift()!;
       if (typeof cmd === "number") {
         const operation = OP_CODE_FUNCTIONS[cmd];
-        if ([99, 100].includes(cmd)) {
+        switch (cmd) {
+          case Opcodes.OP_IF:
+          case Opcodes.OP_NOTIF:
           if (!operation(stack, cmds)) {
             console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
             return false;
           }
-        } else if ([107, 108].includes(cmd)) {
+            break;
+          case Opcodes.OP_TOALTSTACK:
+          case Opcodes.OP_FROMALTSTACK:
           if (!operation(stack, altStack)) {
             console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
             return false;
           }
-        } else if ([172, 173, 174, 175].includes(cmd)) {
+            break;
+
+          case Opcodes.OP_CHECKSIG:
+          case Opcodes.OP_CHECKSIGVERIFY:
+          case Opcodes.OP_CHECKMULTISIG:
+          case Opcodes.OP_CHECKMULTISIGVERIFY:
           if (!operation(stack, z)) {
             console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
             return false;
           }
-        } else {
+            break;
+          default:
           if (!operation(stack)) {
             console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
             return false;
           }
+            break;
         }
       } else {
         stack.push(cmd);
