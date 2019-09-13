@@ -1,4 +1,10 @@
-import { hash256, readVarint, encodeVarint, SIGHASH_ALL } from "../helper";
+import {
+  hash256,
+  readVarint,
+  encodeVarint,
+  SIGHASH_ALL,
+  reverseBuffer
+} from "../helper";
 import { TxIn } from "./TxIn";
 import { SmartBuffer } from "smart-buffer";
 import { TxOut } from "./TxOut";
@@ -52,7 +58,7 @@ export class Tx {
   };
 
   hash = (): Buffer => {
-    return hash256(this.serialize()).reverse();
+    return reverseBuffer(hash256(this.serialize()));
   };
 
   fee = async (testnet: boolean = false): Promise<bigint> => {
@@ -67,12 +73,12 @@ export class Tx {
     return inputSum - outputSum;
   };
 
-  sigHash = async (inutIndex: number): Promise<bigint> => {
+  sigHash = async (inputIndex: number): Promise<bigint> => {
     const s = new SmartBuffer();
     s.writeUInt32LE(this.version);
     s.writeBuffer(encodeVarint(this.txIns.length));
     for (const [i, txIn] of this.txIns.entries()) {
-      if (i === inutIndex) {
+      if (i === inputIndex) {
         s.writeBuffer(
           new TxIn(
             txIn.prevTx,
@@ -127,11 +133,11 @@ export class Tx {
     privateKey: PrivateKey,
     compressed: boolean = true
   ): Promise<boolean> => {
-    const z = await this.sigHash(0);
+    const z = await this.sigHash(inputIndex);
     const der = privateKey.sign(z).der();
     const sig = Buffer.concat([der, Buffer.alloc(1, SIGHASH_ALL)]);
     const sec = privateKey.point.sec(compressed);
-    this.txIns[0].scriptSig = new Script([sig, sec]);
+    this.txIns[inputIndex].scriptSig = new Script([sig, sec]);
     return this.verifyInput(inputIndex);
   };
 
