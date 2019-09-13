@@ -26,6 +26,15 @@ test("verify p2pkh", async () => {
   expect(await tx.verify()).toBe(true);
 });
 
+// test p2sh verify using pre bip16 rules
+// scriptsig: op_o sig1 sig2 redeemscript
+// scriptpubkey: op_hash160 hash op_equal
+// execution ends with stack:
+// 1
+// sig1
+// sig2
+// 0
+// top element is 1 therefore valid. Doesn't validate redeem script
 test("verify p2sh", async () => {
   const tx = await TxFetcher.fetch(
     "46df1a9484d0a81d03ce0ee543ab6e1a23ed06175c104a178268fad381216c2b"
