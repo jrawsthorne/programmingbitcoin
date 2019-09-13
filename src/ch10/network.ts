@@ -211,7 +211,8 @@ export type NetworkMessage =
 
 export class SimpleNode extends EventEmitter {
   socket: Socket;
-  private data = SmartBuffer.fromSize(1024 * 1024 * 10);
+  private data = Buffer.alloc(1024 * 1024 * 10);
+  private inboundCursor = 0;
 
   constructor(
     host: string,
@@ -243,32 +244,25 @@ export class SimpleNode extends EventEmitter {
     const MAGIC = this.testnet ? TESTNET_NETWORK_MAGIC : NETWORK_MAGIC;
 
     this.socket.on("data", (data: Buffer) => {
-      this.data.writeBuffer(data);
+      data.copy(this.data, this.inboundCursor);
+      this.inboundCursor += data.length;
 
-      // keep reading the buffer until we reach the end
-      while (this.data.writeOffset > this.data.readOffset) {
-        // first 4 bytes are expected to be the network magic
-        const magic = this.data.readBuffer(4);
+      if (this.inboundCursor < 20) return; // need payload size at bytes 16-20 in order to proceed
 
+      let i = 0;
+      let end = 0;
+
+      while (i < this.inboundCursor) {
+        const magic = this.data.slice(i, i + 4);
         if (magic.equals(MAGIC)) {
-          // skip over the command
-          this.data.readOffset += 12;
-
-          // next 4 bytes are expected to be the payload length
-          const payloadLength = this.data.readUInt32LE();
-
-          // skip over the checksum
-          this.data.readOffset += 4;
-
-          // if the buffer contains enough data to read the payload
-          if (this.data.writeOffset - this.data.readOffset >= payloadLength) {
-            // move back to beginning of message
-            this.data.readOffset -= 24;
-
-            // read full message (magic, command, payload length, checksum and payload)
-            const message = this.data.readBuffer(payloadLength + 24);
-
+          let start = i;
+          if (this.inboundCursor > start + 16) {
+            // do we have message header in buffer
+            const size = this.data.readUInt32LE(start + 16);
+            if (this.inboundCursor >= start + size + 24) {
+              // Complete message; try and parse it
             try {
+                const message = this.data.slice(start, start + 24 + size);
               const envelope = NetworkEnvelope.parse(message);
               if (this.logging) {
                 console.log(`Receive: ${envelope.toString()}`);
@@ -278,17 +272,23 @@ export class SimpleNode extends EventEmitter {
                 `${envelope.command.toString("ascii")}Message`,
                 envelope
               );
-            } catch {}
+                end = start + 24 + size;
+              } catch {
+                if (this.logging) console.log("Error with msg");
+              }
+            }
+            i += size + 24;
           } else {
-            // not received full message so skip to beginning
-            // of message and wait for more data
-            this.data.readOffset -= 24;
-            break;
+            i = this.inboundCursor; // Skip to end
           }
         } else {
-          // skip to next byte if network magic wasn't found
-          this.data.readOffset -= magic.length - 1;
+          i++;
         }
+        }
+
+      if (end > 0) {
+        this.data.copy(this.data, 0, end, this.inboundCursor); // Copy from later in the buffer to earlier in the buffer
+        this.inboundCursor -= end;
       }
     });
   };
