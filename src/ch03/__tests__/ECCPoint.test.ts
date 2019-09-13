@@ -17,9 +17,7 @@ test("on curve", () => {
     const x = new FieldElement(xRaw, prime);
     const y = new FieldElement(yRaw, prime);
     expect(() => new ECCPoint(x, y, a, b)).toThrowError(
-      `(FieldElement { num: ${x.num}, prime: ${prime} }, FieldElement { num: ${
-        y.num
-      }, prime: ${prime} }) is not on the curve`
+      `(FieldElement { num: ${x.num}, prime: ${prime} }, FieldElement { num: ${y.num}, prime: ${prime} }) is not on the curve`
     );
   }
 });
@@ -89,7 +87,7 @@ test("add", () => {
   ).toBe(true);
 });
 
-test("rmul", () => {
+test("scalarMul", () => {
   //  tests the following scalar multiplications
   //  2*(192,105)
   //  2*(143,98)
@@ -124,6 +122,6 @@ test("rmul", () => {
       const y2 = new FieldElement(y2_raw!, prime);
       p2 = new ECCPoint(x2, y2, a, b);
     }
-    expect(p1.rmul(s!).equals(p2)).toBe(true);
+    expect(p1.scalarMul(s!).equals(p2)).toBe(true);
   }
 });

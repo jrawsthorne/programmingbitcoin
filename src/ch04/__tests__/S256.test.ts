@@ -2,9 +2,9 @@ import { G, S256Point } from "../../ch03/S256Point";
 
 const coefficients = [999n ** 3n, 123n, 42424242n];
 const points = [
-  G.rmul(coefficients[0]),
-  G.rmul(coefficients[1]),
-  G.rmul(coefficients[2])
+  G.scalarMul(coefficients[0]),
+  G.scalarMul(coefficients[1]),
+  G.scalarMul(coefficients[2])
 ];
 
 test("sec", () => {

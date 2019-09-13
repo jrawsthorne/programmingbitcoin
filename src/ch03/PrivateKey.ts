@@ -15,7 +15,7 @@ export class PrivateKey {
   public point: S256Point;
 
   constructor(public secret: bigint) {
-    this.point = G.rmul(secret);
+    this.point = G.scalarMul(secret);
   }
 
   wif = (compressed: boolean = true, testnet: boolean = false): string => {
@@ -43,7 +43,7 @@ export class PrivateKey {
 
   sign = (z: bigint): Signature => {
     const k = this.deterministicK(z);
-    const r = G.rmul(k).x!.num;
+      r = G.scalarMul(k).x!.num;
     const kInv = pow(k, N - 2n, N);
     let s = ((z + r * this.secret) * kInv) % N;
 

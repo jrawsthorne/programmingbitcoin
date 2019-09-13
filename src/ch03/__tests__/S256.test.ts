@@ -4,7 +4,7 @@ import { Signature } from "../Signature";
 import { randBN } from "../../helper";
 
 test("order", () => {
-  expect(G.rmul(N).isInfinity());
+  expect(G.scalarMul(N).isInfinity());
 });
 
 test("pubpoint", () => {
@@ -49,7 +49,7 @@ test("pubpoint", () => {
 
   for (const [secret, x, y] of points) {
     const point = new S256Point({ x, y });
-    expect(G.rmul(secret).equals(point)).toBe(true);
+    expect(G.scalarMul(secret).equals(point)).toBe(true);
   }
 });
 

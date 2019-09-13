@@ -8,9 +8,7 @@ import { toBufferBE, toBigIntBE } from "bigint-buffer";
 const A = 0n;
 const B = 7n;
 
-export const N = BigInt(
-  "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"
-);
+export const N = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
 
 interface S256PointParams {
   x?: bigint;
@@ -31,7 +29,7 @@ export class S256Point extends ECCPoint {
     let sInv = pow(sig.s, N - 2n, N);
     let u = (z * sInv) % N;
     let v = (sig.r * sInv) % N;
-    const total = G.rmul(u).add(this.rmul(v));
+      const total = G.scalarMul(u).add(this.scalarMul(v));
     return total.x!.num === sig.r;
   };
 
@@ -93,10 +91,10 @@ export class S256Point extends ECCPoint {
     return encodeBase58Checksum(Buffer.concat([prefix, h160]));
   };
 
-  rmul = (coefficient: bigint): S256Point => {
+  scalarMul = (coefficient: bigint): S256Point => {
     let coef = coefficient;
     coef = mod(coef, N);
-    const point = super.rmul(coef);
+    const point = super.scalarMul(coef);
     const x = point.x ? point.x.num : undefined;
     const y = point.y ? point.y.num : undefined;
     return new S256Point({ x, y });
@@ -109,10 +107,6 @@ export class S256Point extends ECCPoint {
 }
 
 export const G = new S256Point({
-  x: BigInt(
-    "0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-  ),
-  y: BigInt(
-    "0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8"
-  )
+  x: 0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798n,
+  y: 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8n
 });

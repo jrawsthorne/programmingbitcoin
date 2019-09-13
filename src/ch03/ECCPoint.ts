@@ -75,7 +75,7 @@ export class ECCPoint {
 
     // point at infinity if two points are equal and y value is 0
     // otherwise gradient calculation would have 0 in the denominator
-    if (this.equals(other) && this.y!.equals(this.x.rmul(0n))) {
+    if (this.equals(other) && this.y!.equals(this.x.scalarMul(0n))) {
       return this.infinity();
     }
 
@@ -84,17 +84,17 @@ export class ECCPoint {
       // calculate gradient (tangent to the curve)
       const s = this.x
         .pow(2n)
-        .rmul(3n)
+        .scalarMul(3n)
         .add(this.a)
-        .div(this.y!.rmul(2n));
-      const x = s.pow(2n).sub(this.x.rmul(2n));
+        .div(this.y!.scalarMul(2n));
+      const x = s.pow(2n).sub(this.x.scalarMul(2n));
       const y = s.mul(this.x.sub(x)).sub(this.y!);
       return new ECCPoint(x, y, this.a, this.b);
     }
     throw Error("Invalid addition");
   };
 
-  rmul(coefficient: bigint): ECCPoint {
+  scalarMul(coefficient: bigint): ECCPoint {
     let coef = coefficient;
     let current: ECCPoint = this;
     let result = this.infinity();
@@ -104,7 +104,7 @@ export class ECCPoint {
         result = result.add(current);
       }
       current = current.add(current);
-      coef = coef >> 1n;
+      coef >>= 1n;
     }
     return result;
   }
