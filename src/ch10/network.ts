@@ -7,10 +7,13 @@ import {
   randInt,
   u64ToEndian,
   toIPFormat,
-  encodeVarint
+  encodeVarint,
+  readVarint,
+  reverseBuffer
 } from "../helper";
 import { Socket } from "net";
 import { EventEmitter } from "events";
+import { Tx } from "../ch05/Tx";
 
 export class NetworkEnvelope {
   public magic: Buffer;
@@ -207,7 +210,10 @@ export type NetworkMessage =
   | VerAckMessage
   | PingMessage
   | PongMessage
-  | GetHeadersMessage;
+  | GetHeadersMessage
+  | TxMessage
+  | GetDataMessage
+  | InvMessage;
 
 export class SimpleNode extends EventEmitter {
   socket: Socket;
@@ -261,17 +267,17 @@ export class SimpleNode extends EventEmitter {
             const size = this.data.readUInt32LE(start + 16);
             if (this.inboundCursor >= start + size + 24) {
               // Complete message; try and parse it
-            try {
+              try {
                 const message = this.data.slice(start, start + 24 + size);
-              const envelope = NetworkEnvelope.parse(message);
-              if (this.logging) {
-                console.log(`Receive: ${envelope.toString()}`);
-              }
-              this.handleMessage(envelope);
-              this.emit(
-                `${envelope.command.toString("ascii")}Message`,
-                envelope
-              );
+                const envelope = NetworkEnvelope.parse(message);
+                if (this.logging) {
+                  console.log(`Receive: ${envelope.toString()}`);
+                }
+                this.handleMessage(envelope);
+                this.emit(
+                  `${envelope.command.toString("ascii")}Message`,
+                  envelope
+                );
                 end = start + 24 + size;
               } catch {
                 if (this.logging) console.log("Error with msg");
@@ -284,7 +290,7 @@ export class SimpleNode extends EventEmitter {
         } else {
           i++;
         }
-        }
+      }
 
       if (end > 0) {
         this.data.copy(this.data, 0, end, this.inboundCursor); // Copy from later in the buffer to earlier in the buffer
@@ -301,6 +307,19 @@ export class SimpleNode extends EventEmitter {
       // send back pong with same nonce if we receive ping
       const nonce = PingMessage.parse(message.payload).nonce;
       this.send(new PongMessage(nonce));
+    } else if (message.command.equals(InvMessage.command)) {
+      // only connected to one node so always ask for data
+      // when inv received
+      const invMessage = InvMessage.parse(message.payload);
+      for (const inv of invMessage.invs) {
+        switch (inv.type) {
+          case InvType.MSG_BLOCK:
+          case InvType.MSG_TX: {
+            this.send(new GetDataMessage([inv]));
+            break;
+          }
+        }
+      }
     }
   };
 
@@ -325,6 +344,74 @@ export class SimpleNode extends EventEmitter {
     }
     this.socket.write(envelope.serialize());
   };
+}
+
+export class GetDataMessage {
+  public static readonly command = Buffer.from("getdata");
+  constructor(public invs: Inv[]) {}
+
+  serialize = (): Buffer => {
+    const s = new SmartBuffer();
+    s.writeBuffer(encodeVarint(this.invs.length));
+    for (const inv of this.invs) {
+      s.writeBuffer(inv.serialize());
+    }
+    return s.toBuffer();
+  };
+
+  getCommand = () => GetDataMessage.command;
+}
+
+enum InvType {
+  ERROR = 0,
+  MSG_TX = 1,
+  MSG_BLOCK = 2,
+  MSG_FILTERED_BLOCK = 3,
+  MSG_CMPCT_BLOCK = 4
+}
+
+class Inv {
+  constructor(public type: InvType, public hash: Buffer) {}
+
+  static parse = (s: SmartBuffer): Inv => {
+    const type: InvType = s.readUInt32LE();
+    const hash = s.readBuffer(32);
+    return new Inv(type, hash);
+  };
+
+  serialize = (): Buffer => {
+    const s = new SmartBuffer();
+    s.writeUInt32LE(this.type);
+    s.writeBuffer(this.hash);
+    return s.toBuffer();
+  };
+}
+
+export class InvMessage {
+  public static readonly command = Buffer.from("inv");
+
+  constructor(public invs: Inv[]) {}
+
+  static parse = (message: Buffer): InvMessage => {
+    const s = SmartBuffer.fromBuffer(message);
+    const count = readVarint(s);
+    let invs: Inv[] = [];
+    for (let i = 0; i < count; i++) {
+      invs.push(Inv.parse(s));
+    }
+    return new InvMessage(invs);
+  };
+
+  serialize = (): Buffer => {
+    const s = new SmartBuffer();
+    s.writeBuffer(encodeVarint(this.invs.length));
+    for (const inv of this.invs) {
+      s.writeBuffer(inv.serialize());
+    }
+    return s.toBuffer();
+  };
+
+  getCommand = () => InvMessage.command;
 }
 
 interface GetHeadersMessageParams {
@@ -358,13 +445,27 @@ export class GetHeadersMessage {
 
     s.writeUInt32LE(this.version);
     s.writeUInt8(1);
-    s.writeBuffer(this.startBlock.reverse());
-    s.writeBuffer(this.endBlock.reverse());
+    s.writeBuffer(reverseBuffer(this.startBlock));
+    s.writeBuffer(reverseBuffer(this.endBlock));
 
     return s.toBuffer();
   };
 
   getCommand = (): Buffer => GetHeadersMessage.command;
+}
+
+export class TxMessage {
+  public static command = Buffer.from("tx");
+
+  constructor(public tx: Tx) {}
+
+  serialize = (): Buffer => this.tx.serialize();
+
+  static parse = (message: Buffer): TxMessage => {
+    return new TxMessage(Tx.parse(message));
+  };
+
+  getCommand = (): Buffer => TxMessage.command;
 }
 
 export class UnexpectedNetworkMagic extends Error {
