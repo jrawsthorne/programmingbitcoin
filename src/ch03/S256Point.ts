@@ -4,6 +4,7 @@ import { Signature } from "./Signature";
 import { SmartBuffer } from "smart-buffer";
 import { hash160, encodeBase58Checksum, mod, pow } from "../helper";
 import { toBufferBE, toBigIntBE } from "bigint-buffer";
+import secp from "tiny-secp256k1";
 
 const A = 0n;
 const B = 7n;
@@ -25,12 +26,22 @@ export class S256Point extends ECCPoint {
     );
   }
 
-  verify = (z: bigint, sig: Signature): boolean => {
-    let sInv = pow(sig.s, N - 2n, N);
-    let u = (z * sInv) % N;
-    let v = (sig.r * sInv) % N;
+  verify = (z: bigint, sig: Signature, fast: boolean = true): boolean => {
+    if (fast) {
+      const Q = this.sec();
+      const h = toBufferBE(z, 32);
+      const normalisedSignature = Buffer.concat([
+        toBufferBE(sig.r, 32),
+        toBufferBE(sig.s, 32)
+      ]);
+      return secp.verify(h, Q, normalisedSignature);
+    } else {
+      let sInv = pow(sig.s, N - 2n, N);
+      let u = (z * sInv) % N;
+      let v = (sig.r * sInv) % N;
       const total = G.scalarMul(u).add(this.scalarMul(v));
-    return total.x!.num === sig.r;
+      return total.x!.num === sig.r;
+    }
   };
 
   sec = (compressed: boolean = true): Buffer => {

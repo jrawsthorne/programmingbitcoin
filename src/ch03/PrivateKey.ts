@@ -3,6 +3,7 @@ import { Signature } from "./Signature";
 import crypto from "crypto";
 import { encodeBase58Checksum, pow, decodeBase58Wif } from "../helper";
 import { toBufferBE, toBigIntBE } from "bigint-buffer";
+import secp from "tiny-secp256k1";
 
 const sha256HMAC = (key: Buffer, data: Buffer): Buffer => {
   return crypto
@@ -41,14 +42,23 @@ export class PrivateKey {
     return new PrivateKey(pkBuf);
   };
 
-  sign = (z: bigint): Signature => {
-    const k = this.deterministicK(z);
+  sign = (z: bigint, fast: boolean = true): Signature => {
+    let r: bigint, s: bigint;
+    if (fast) {
+      const h = toBufferBE(z, 32);
+      const d = toBufferBE(this.secret, 32);
+      const sig = secp.sign(h, d);
+      r = toBigIntBE(sig.slice(0, 32));
+      s = toBigIntBE(sig.slice(32));
+    } else {
+      const k = this.deterministicK(z);
       r = G.scalarMul(k).x!.num;
-    const kInv = pow(k, N - 2n, N);
-    let s = ((z + r * this.secret) * kInv) % N;
+      const kInv = pow(k, N - 2n, N);
+      s = ((z + r * this.secret) * kInv) % N;
 
-    if (s > N / 2n) {
-      s = N - s;
+      if (s > N / 2n) {
+        s = N - s;
+      }
     }
 
     return new Signature(r, s);
