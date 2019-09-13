@@ -52,9 +52,9 @@ export class FieldElement {
     return new FieldElement(num, this.prime);
   };
 
-  rmul = (coefficient: bigint): FieldElement => {
-    if (coefficient < 0) throw Error("rmul coefficient must be > 0");
-    const num = (this.num * coefficient) % this.prime;
+  scalarMul = (scalar: bigint): FieldElement => {
+    if (scalar < 0) throw Error("scalar must be > 0");
+    const num = (this.num * scalar) % this.prime;
     return new FieldElement(num, this.prime);
   };
 

@@ -72,3 +72,9 @@ test("errors", () => {
     "Num 10 not in field range 0 to 4"
   );
 });
+
+test("scalarMul", () => {
+  const a = new FieldElement(24n, 31n);
+  const b = 2n;
+  expect(a.scalarMul(b).equals(a.add(a))).toBe(true);
+});
