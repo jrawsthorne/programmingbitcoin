@@ -126,6 +126,51 @@ export const opChecksig = (stack: Stack, z: bigint): boolean => {
   return true;
 };
 
+// m of n bare multisig
+export const opCheckMultisig = (stack: Stack, z: bigint): boolean => {
+  if (stack.length < 1) return false;
+  const n = decodeNum(stack.pop()!); // total number of signatures
+  if (stack.length < n + 1) return false;
+  const secPubkeys: Buffer[] = [];
+  for (let i = 0; i < n; i++) {
+    secPubkeys.push(stack.pop()!);
+  }
+  const m = decodeNum(stack.pop()!);
+  if (stack.length < m + 1) return false;
+  const derSignatures: Buffer[] = [];
+  for (let i = 0; i < m; i++) {
+    let derSignature = stack.pop()!;
+    // each signature is assumed to be signed with SIGHASH_ALL
+    // sighash byte is appended to end of signature so remove it
+    derSignature = derSignature.slice(0, derSignature.length - 1);
+    derSignatures.push(derSignature);
+  }
+  // Factor in off by one error in protocol.
+  // Consume top element but don't do anything with it
+  stack.pop();
+  try {
+    // parse all the points
+    const points: S256Point[] = secPubkeys.map(secPubkey =>
+      S256Point.parse(secPubkey)
+    );
+    // parse all the signatures
+    const signatures: Signature[] = derSignatures.map(derSignature =>
+      Signature.parse(derSignature)
+    );
+    for (const signature of signatures) {
+      if (points.length === 0) return false;
+      while (points.length > 0) {
+        const point = points.shift()!;
+        if (point.verify(z, signature)) break;
+      }
+    }
+    stack.push(encodeNum(1));
+  } catch {
+    return false;
+  }
+  return true;
+};
+
 export type Stack = Buffer[];
 export type Cmds = (Buffer | number)[];
 
@@ -193,7 +238,8 @@ export const OP_CODE_FUNCTIONS: FUNCTIONS = {
   167: opSha1,
   169: opHash160,
   170: opHash256,
-  172: opChecksig
+  172: opChecksig,
+  174: opCheckMultisig
 };
 
 type NAMES = {
