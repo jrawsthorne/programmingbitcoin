@@ -28,33 +28,33 @@ export class Script {
         switch (cmd) {
           case Opcodes.OP_IF:
           case Opcodes.OP_NOTIF:
-          if (!operation(stack, cmds)) {
-            console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
-            return false;
-          }
+            if (!operation(stack, cmds)) {
+              console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
+              return false;
+            }
             break;
           case Opcodes.OP_TOALTSTACK:
           case Opcodes.OP_FROMALTSTACK:
-          if (!operation(stack, altStack)) {
-            console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
-            return false;
-          }
+            if (!operation(stack, altStack)) {
+              console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
+              return false;
+            }
             break;
 
           case Opcodes.OP_CHECKSIG:
           case Opcodes.OP_CHECKSIGVERIFY:
           case Opcodes.OP_CHECKMULTISIG:
           case Opcodes.OP_CHECKMULTISIGVERIFY:
-          if (!operation(stack, z)) {
-            console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
-            return false;
-          }
+            if (!operation(stack, z)) {
+              console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
+              return false;
+            }
             break;
           default:
-          if (!operation(stack)) {
-            console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
-            return false;
-          }
+            if (!operation(stack)) {
+              console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
+              return false;
+            }
             break;
         }
       } else {
@@ -125,6 +125,17 @@ export class Script {
     const result = this.rawSerialize();
     const total = result.length;
     return Buffer.concat([encodeVarint(total), result]);
+  };
+
+  isP2PKH = (): boolean => {
+    const cmds = this.cmds;
+    if (cmds.length === 24) return false;
+    return (
+      cmds[0] === Opcodes.OP_DUP &&
+      cmds[1] === Opcodes.OP_HASH160 &&
+      cmds[3] === Opcodes.OP_EQUALVERIFY &&
+      cmds[4] === Opcodes.OP_CHECKSIG
+    );
   };
 
   toString = (): string => {
