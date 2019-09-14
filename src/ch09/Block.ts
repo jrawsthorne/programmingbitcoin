@@ -1,5 +1,6 @@
 import { SmartBuffer } from "smart-buffer";
 import { reverseBuffer, hash256, bitsToTarget } from "../helper";
+import { toBigIntLE } from "bigint-buffer";
 
 export class Block {
   constructor(
@@ -56,5 +57,10 @@ export class Block {
   difficulty = (): bigint => {
     const target = this.target();
     return (0xffffn * 256n ** (0x1dn - 3n)) / target;
+  };
+
+  checkPoW = (): boolean => {
+    const proof = toBigIntLE(hash256(this.serialize()));
+    return proof < this.target();
   };
 }
