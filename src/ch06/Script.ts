@@ -1,6 +1,15 @@
 import { readVarint, encodeVarint } from "../helper";
 import { SmartBuffer } from "smart-buffer";
-import { OP_CODE_NAMES, OP_CODE_FUNCTIONS, Stack, Cmds, Opcodes } from "./Op";
+import {
+  OP_CODE_NAMES,
+  OP_CODE_FUNCTIONS,
+  Stack,
+  Cmds,
+  Opcodes,
+  opHash160,
+  opEqual,
+  opVerify
+} from "./Op";
 
 export const p2pkhScript = (h160: Buffer): Script => {
   return new Script([0x76, 0xa9, h160, 0x88, 0xac]);
@@ -59,6 +68,35 @@ export class Script {
         }
       } else {
         stack.push(cmd);
+        // p2sh check bip16
+        // structure is:
+        // OP_HASH160 <hash> OP_EQUAL
+        if (
+          cmd.length === 3 &&
+          cmds[0] == Opcodes.OP_HASH160 &&
+          Buffer.isBuffer(cmds[1]) &&
+          (cmds[1] as Buffer).byteLength === 20 &&
+          cmds[2] === Opcodes.OP_EQUAL
+        ) {
+          cmds.pop(); // know this is OP_HASH160
+          const h160 = cmds.pop()! as Buffer; // <hash>
+          cmds.pop(); // know this is OP_EQUAL
+          // run typical OP_HASH160, push 20 byte hash and OP_EQUAL
+          // redeem script is currently on top of stack
+          if (!opHash160(stack)) return false;
+          stack.push(h160);
+          if (!opEqual(stack)) return false;
+          if (!opVerify(stack)) {
+            console.log("Bad p2sh h160");
+            return false;
+          }
+          // now validated redeem script hashes to h160
+
+          // format redeem script ready to be parsed
+          const redeemScript = Buffer.concat([encodeVarint(cmd.length), cmd]);
+          // extend command set with parsed commands from redeeem script
+          cmds.push(...Script.parse(SmartBuffer.fromBuffer(redeemScript)).cmds);
+        }
       }
     }
     if (stack.length === 0) return false;
