@@ -8,7 +8,7 @@ import {
 import { TxIn } from "./TxIn";
 import { SmartBuffer } from "smart-buffer";
 import { TxOut } from "./TxOut";
-import { toBigIntBE } from "bigint-buffer";
+import { toBigIntBE, toBigIntLE } from "bigint-buffer";
 import { PrivateKey } from "../ch03/PrivateKey";
 import { Script } from "../ch06/Script";
 
@@ -156,6 +156,12 @@ export class Tx {
       this.txIns[0].prevIndex === 0xffffffff &&
       this.txIns[0].prevTx.equals(Buffer.alloc(32, 0))
     );
+  };
+
+  coinbaseHeight = (): number => {
+    if (!this.isCoinbase()) throw Error("Not a coinbase transaction");
+    // TODO: Write non bigint function to this, fine for now
+    return Number(toBigIntLE(this.txIns[0].scriptSig.cmds[0] as Buffer));
   };
 
   toString = (): string => {
