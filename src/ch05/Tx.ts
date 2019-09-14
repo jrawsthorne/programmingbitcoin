@@ -73,30 +73,29 @@ export class Tx {
     return inputSum - outputSum;
   };
 
-  sigHash = async (inputIndex: number): Promise<bigint> => {
+  sigHash = async (
+    inputIndex: number,
+    redeemScript?: Script
+  ): Promise<bigint> => {
     const s = new SmartBuffer();
     s.writeUInt32LE(this.version);
     s.writeBuffer(encodeVarint(this.txIns.length));
     for (const [i, txIn] of this.txIns.entries()) {
+      // standard tx just empty the scriptsig
+      let scriptSig = undefined;
       if (i === inputIndex) {
-        s.writeBuffer(
-          new TxIn(
-            txIn.prevTx,
-            txIn.prevIndex,
-            await txIn.scriptPubkey(this.testnet),
-            txIn.sequence
-          ).serialize()
-        );
-      } else {
-        s.writeBuffer(
-          new TxIn(
-            txIn.prevTx,
-            txIn.prevIndex,
-            undefined,
-            txIn.sequence
-          ).serialize()
-        );
+        // in p2pkh replace scriptsig with scriptpubkey when creating sighash
+        // in p2sh replace scriptsig with redeemscript
+        scriptSig = redeemScript || (await txIn.scriptPubkey(this.testnet));
       }
+      s.writeBuffer(
+        new TxIn(
+          txIn.prevTx,
+          txIn.prevIndex,
+          scriptSig,
+          txIn.sequence
+        ).serialize()
+      );
     }
     s.writeBuffer(encodeVarint(this.txOuts.length));
     for (const txOut of this.txOuts) {
@@ -111,7 +110,15 @@ export class Tx {
   verifyInput = async (inputIndex: number): Promise<boolean> => {
     const txIn = this.txIns[inputIndex];
     const scriptPubkey = await txIn.scriptPubkey(this.testnet);
-    const z = await this.sigHash(inputIndex);
+    let redeemScript;
+    if (scriptPubkey.isP2SH()) {
+      // last cmd if p2sh will be the redeem script
+      const cmd = txIn.scriptSig.cmds[txIn.scriptSig.cmds.length - 1] as Buffer;
+      // turn redeem script into valid script by appending varint of its length
+      const rawRedeem = Buffer.concat([encodeVarint(cmd.byteLength), cmd]);
+      redeemScript = Script.parse(SmartBuffer.fromBuffer(rawRedeem));
+    }
+    const z = await this.sigHash(inputIndex, redeemScript);
     const combinedScript = txIn.scriptSig.add(scriptPubkey);
     return combinedScript.evaluate(z);
   };
