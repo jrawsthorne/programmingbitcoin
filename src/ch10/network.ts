@@ -268,7 +268,10 @@ export class SimpleNode extends EventEmitter {
             if (this.inboundCursor >= start + size + 24) {
               // Complete message; try and parse it
               try {
-                const message = this.data.slice(start, start + 24 + size);
+                // allocate new memory for received message
+                const message = Buffer.alloc(24 + size);
+                // copy from data buffer to new allocated memory
+                this.data.copy(message, 0, start, start + 24 + size);
                 const envelope = NetworkEnvelope.parse(message);
                 if (this.logging) {
                   console.log(`Receive: ${envelope.toString()}`);
@@ -324,9 +327,9 @@ export class SimpleNode extends EventEmitter {
   };
 
   // handshake sends version and expects verack
-  handshake = async (): Promise<void> => {
+  handshake = async (relay: boolean = false): Promise<void> => {
     return new Promise(resolve => {
-      const version = new VersionMessage();
+      const version = new VersionMessage({ relay });
       this.send(version);
       this.once("verackMessage", resolve);
     });
@@ -362,7 +365,7 @@ export class GetDataMessage {
   getCommand = () => GetDataMessage.command;
 }
 
-enum InvType {
+export enum InvType {
   ERROR = 0,
   MSG_TX = 1,
   MSG_BLOCK = 2,
