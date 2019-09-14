@@ -30,8 +30,13 @@ export class TxIn {
     return s.toBuffer();
   };
 
-  fetchTx = (testnet: boolean = false): Promise<Tx> => {
-    return TxFetcher.fetch(this.prevTx.toString("hex"), testnet);
+  fetchTx = async (testnet: boolean = false): Promise<Tx> => {
+    try {
+      return await TxFetcher.fetch(this.prevTx.toString("hex"), testnet);
+    } catch {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return this.fetchTx(testnet);
+    }
   };
 
   value = async (testnet: boolean = false): Promise<bigint> => {
