@@ -148,6 +148,16 @@ export class Tx {
     return this.verifyInput(inputIndex);
   };
 
+  // coinbase must have a single input with
+  // prevIndex of ffffffff and prevTx of 32 0 bytes
+  isCoinbase = (): boolean => {
+    return (
+      this.txIns.length === 1 &&
+      this.txIns[0].prevIndex === 0xffffffff &&
+      this.txIns[0].prevTx.equals(Buffer.alloc(32, 0))
+    );
+  };
+
   toString = (): string => {
     let txIns = "";
     for (const txIn of this.txIns) {
