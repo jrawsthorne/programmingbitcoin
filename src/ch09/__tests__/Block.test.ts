@@ -102,3 +102,14 @@ test("bip141", () => {
   block = Block.parse(blockRaw);
   expect(block.bip141()).toBe(false);
 });
+
+test("target", () => {
+  const blockRaw = Buffer.from(
+    "020000208ec39428b17323fa0ddec8e887b4a7c53b8c0a0a220cfd0000000000000000005b0750fce0a889502d40508d39576821155e9c9e3f5c3157f961db38fd8b25be1e77a759e93c0118a4ffd71d",
+    "hex"
+  );
+  const block = Block.parse(blockRaw);
+  expect(block.target()).toBe(
+    0x13ce9000000000000000000000000000000000000000000n
+  );
+});

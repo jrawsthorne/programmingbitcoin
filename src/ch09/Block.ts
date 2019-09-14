@@ -1,5 +1,5 @@
 import { SmartBuffer } from "smart-buffer";
-import { reverseBuffer, hash256 } from "../helper";
+import { reverseBuffer, hash256, bitsToTarget } from "../helper";
 
 export class Block {
   constructor(
@@ -47,5 +47,9 @@ export class Block {
 
   bip141 = (): boolean => {
     return ((this.version >> 1) & 1) === 1;
+  };
+
+  target = (): bigint => {
+    return bitsToTarget(this.bits);
   };
 }

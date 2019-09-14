@@ -237,3 +237,9 @@ export const h160ToP2SHAddress = (
   const prefix = testnet ? Buffer.alloc(1, 0xc4) : Buffer.alloc(1, 0x05);
   return encodeBase58Checksum(Buffer.concat([prefix, h160]));
 };
+
+export const bitsToTarget = (bits: Buffer): bigint => {
+  const exponent = bits[bits.byteLength - 1];
+  const coefficient = toBigIntLE(bits.slice(0, bits.byteLength - 1));
+  return coefficient * 256n ** (BigInt(exponent) - 3n);
+};
