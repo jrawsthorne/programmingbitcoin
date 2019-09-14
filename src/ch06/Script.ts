@@ -12,7 +12,17 @@ import {
 } from "./Op";
 
 export const p2pkhScript = (h160: Buffer): Script => {
-  return new Script([0x76, 0xa9, h160, 0x88, 0xac]);
+  return new Script([
+    Opcodes.OP_DUP,
+    Opcodes.OP_HASH160,
+    h160,
+    Opcodes.OP_EQUALVERIFY,
+    Opcodes.OP_CHECKSIG
+  ]);
+};
+
+export const p2shScript = (h160: Buffer): Script => {
+  return new Script([Opcodes.OP_HASH160, h160, Opcodes.OP_EQUAL]);
 };
 
 export class Script {
@@ -166,13 +176,24 @@ export class Script {
   };
 
   isP2PKH = (): boolean => {
-    const cmds = this.cmds;
-    if (cmds.length === 24) return false;
     return (
-      cmds[0] === Opcodes.OP_DUP &&
-      cmds[1] === Opcodes.OP_HASH160 &&
-      cmds[3] === Opcodes.OP_EQUALVERIFY &&
-      cmds[4] === Opcodes.OP_CHECKSIG
+      this.cmds.length === 5 &&
+      this.cmds[0] === Opcodes.OP_DUP &&
+      this.cmds[1] === Opcodes.OP_HASH160 &&
+      Buffer.isBuffer(this.cmds[2]) &&
+      (this.cmds[2] as Buffer).byteLength === 20 &&
+      this.cmds[3] === Opcodes.OP_EQUALVERIFY &&
+      this.cmds[4] === Opcodes.OP_CHECKSIG
+    );
+  };
+
+  isP2SH = (): boolean => {
+    return (
+      this.cmds.length === 3 &&
+      this.cmds[0] === Opcodes.OP_HASH160 &&
+      Buffer.isBuffer(this.cmds[1]) &&
+      (this.cmds[1] as Buffer).byteLength === 20 &&
+      this.cmds[2] === Opcodes.OP_EQUAL
     );
   };
 
