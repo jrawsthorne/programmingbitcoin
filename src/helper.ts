@@ -221,3 +221,19 @@ export const decodeBase58Address = (address: string): Buffer => {
 export const encodeBase58Checksum = (b: Buffer): string => {
   return encodeBase58(Buffer.concat([b, hash256(b).slice(0, 4)]));
 };
+
+export const h160ToP2PKHAddress = (
+  h160: Buffer,
+  testnet: boolean = false
+): string => {
+  const prefix = testnet ? Buffer.alloc(1, 0x6f) : Buffer.alloc(1, 0);
+  return encodeBase58Checksum(Buffer.concat([prefix, h160]));
+};
+
+export const h160ToP2SHAddress = (
+  h160: Buffer,
+  testnet: boolean = false
+): string => {
+  const prefix = testnet ? Buffer.alloc(1, 0xc4) : Buffer.alloc(1, 0x05);
+  return encodeBase58Checksum(Buffer.concat([prefix, h160]));
+};

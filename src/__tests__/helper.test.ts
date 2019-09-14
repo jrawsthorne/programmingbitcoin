@@ -1,4 +1,10 @@
-import { encodeVarint, encodeBase58, readVarint } from "../helper";
+import {
+  encodeVarint,
+  encodeBase58,
+  readVarint,
+  h160ToP2PKHAddress,
+  h160ToP2SHAddress
+} from "../helper";
 import { SmartBuffer } from "smart-buffer";
 
 test("encode varint", () => {
@@ -60,4 +66,20 @@ test("encode base58", () => {
       )
     )
   ).toEqual("EQJsjkd6JaGwxrjEhfeqPenqHwrBmPQZjJGNSCHBkcF7");
+});
+
+test("p2pkh address", () => {
+  const h160 = Buffer.from("74d691da1574e6b3c192ecfb52cc8984ee7b6c56", "hex");
+  let want = "1BenRpVUFK65JFWcQSuHnJKzc4M8ZP8Eqa";
+  expect(h160ToP2PKHAddress(h160, false)).toBe(want);
+  want = "mrAjisaT4LXL5MzE81sfcDYKU3wqWSvf9q";
+  expect(h160ToP2PKHAddress(h160, true)).toBe(want);
+});
+
+test("p2sh address", () => {
+  const h160 = Buffer.from("74d691da1574e6b3c192ecfb52cc8984ee7b6c56", "hex");
+  let want = "3CLoMMyuoDQTPRD3XYZtCvgvkadrAdvdXh";
+  expect(h160ToP2SHAddress(h160, false)).toBe(want);
+  want = "2N3u1R6uwQfuobCqbCgBkpsgBxvr1tZpe7B";
+  expect(h160ToP2SHAddress(h160, true)).toBe(want);
 });
