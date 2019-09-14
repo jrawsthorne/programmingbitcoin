@@ -52,4 +52,9 @@ export class Block {
   target = (): bigint => {
     return bitsToTarget(this.bits);
   };
+
+  difficulty = (): bigint => {
+    const target = this.target();
+    return (0xffffn * 256n ** (0x1dn - 3n)) / target;
+  };
 }
