@@ -64,6 +64,60 @@ export class MerkleTree {
     return this.nodes[this.currentDepth + 1].length > this.currentIndex * 2 + 1;
   };
 
+  populateTree = (flagBits: number[], hashes: Buffer[]): void => {
+    // traverse up until we find the merkle root
+    while (!this.root()) {
+      // if at a leaf node we have the hash so just need to traverse up
+      if (this.isLeaf()) {
+        // always given hash for leaf node
+        // or never traverse tree to it because a parent is given
+        flagBits.shift();
+        this.setCurrentNode(hashes.shift()!);
+        this.up();
+      } else {
+        const leftHash = this.getLeftNode();
+        // if don't have left hash we either need to
+        // calculate it or it's given in the hashes field
+        if (!leftHash) {
+          // flag bit 0 means we are given it
+          if (flagBits.shift() === 0) {
+            this.setCurrentNode(hashes.shift()!);
+            this.up();
+          } else {
+            this.left();
+          }
+        } else if (this.rightExists()) {
+          const rightHash = this.getRightNode();
+          // if don't have right hash we need to calculate it
+          // before we can calculate the current hash so go right
+          // Already have left because of depth first search
+          if (!rightHash) {
+            this.right();
+          } else {
+            // have both left and right hash so calculate merkle
+            // parent value and set to current node
+            // then we can go back up
+            this.setCurrentNode(merkleParent(leftHash, rightHash));
+            this.up();
+          }
+        } else {
+          // No right child so calculate merkle parent using
+          // duplicate of left hash
+          this.setCurrentNode(merkleParent(leftHash, leftHash));
+          this.up();
+        }
+      }
+    }
+    if (hashes.length !== 0) {
+      throw Error(`hashes not all consumed ${hashes.length}`);
+    }
+    for (const flagBit of flagBits) {
+      if (flagBit !== 0) {
+        throw Error("flag bits not all consumed");
+      }
+    }
+  };
+
   toString = (): string => {
     const result: string[] = [];
     for (const [depth, level] of this.nodes.entries()) {
