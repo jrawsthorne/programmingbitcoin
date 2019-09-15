@@ -15,6 +15,7 @@ import {
 import { Socket } from "net";
 import { EventEmitter } from "events";
 import { Tx } from "../ch05/Tx";
+import { Block } from "../ch09/Block";
 
 export class NetworkEnvelope {
   public magic: Buffer;
@@ -448,7 +449,7 @@ export class GetHeadersMessage {
     const s = new SmartBuffer();
 
     s.writeUInt32LE(this.version);
-    s.writeUInt8(1);
+    s.writeUInt8(this.numHashes);
     s.writeBuffer(reverseBuffer(this.startBlock));
     s.writeBuffer(reverseBuffer(this.endBlock));
 
@@ -470,6 +471,28 @@ export class TxMessage {
   };
 
   getCommand = (): Buffer => TxMessage.command;
+}
+
+export class HeadersMessage {
+  public static command = Buffer.from("headers");
+
+  constructor(public blocks: Block[]) {}
+
+  static parse = (message: Buffer): HeadersMessage => {
+    const s = SmartBuffer.fromBuffer(message);
+    const numHeaders = readVarint(s);
+    let blocks: Block[] = [];
+    for (let i = 0; i < numHeaders; i++) {
+      blocks.push(Block.parse(s));
+      const numTxs = readVarint(s);
+      if (numTxs !== 0n) {
+        throw Error("Number of txs not 0");
+      }
+    }
+    return new HeadersMessage(blocks);
+  };
+
+  getCommand = (): Buffer => HeadersMessage.command;
 }
 
 export class UnexpectedNetworkMagic extends Error {

@@ -1,6 +1,5 @@
 import { SmartBuffer } from "smart-buffer";
-import { reverseBuffer, hash256, bitsToTarget } from "../helper";
-import { toBigIntLE } from "bigint-buffer";
+import { reverseBuffer, hash256, bitsToTarget, toBigIntLE } from "../helper";
 
 export class Block {
   constructor(
@@ -12,8 +11,8 @@ export class Block {
     public nonce: Buffer
   ) {}
 
-  static parse = (block: Buffer): Block => {
-    const s = SmartBuffer.fromBuffer(block);
+  static parse = (block: Buffer | SmartBuffer): Block => {
+    const s = Buffer.isBuffer(block) ? SmartBuffer.fromBuffer(block) : block;
     const version = s.readUInt32LE();
     const prevBlock = reverseBuffer(s.readBuffer(32));
     const merkleRoot = reverseBuffer(s.readBuffer(32));
