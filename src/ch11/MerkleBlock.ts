@@ -1,4 +1,9 @@
-import { reverseBuffer, readVarint, merkleParent } from "../helper";
+import {
+  reverseBuffer,
+  readVarint,
+  merkleParent,
+  bytesToBitField
+} from "../helper";
 import { SmartBuffer } from "smart-buffer";
 
 // depth first traversal
@@ -166,7 +171,7 @@ export class MerkleBlock {
     const numHashes = readVarint(s);
     const hashes: Buffer[] = [];
     for (let i = 0; i < numHashes; i++) {
-      hashes.push(s.readBuffer(32));
+      hashes.push(reverseBuffer(s.readBuffer(32)));
     }
     const flagsLength = readVarint(s);
     const flags = s.readBuffer(Number(flagsLength));
@@ -182,5 +187,14 @@ export class MerkleBlock {
       hashes,
       flags
     );
+  };
+
+  isValid = (): boolean => {
+    const flagBits = bytesToBitField(this.flags);
+    const hashes = this.hashes.map(hash => reverseBuffer(hash));
+    const merkleTree = new MerkleTree(this.total);
+    merkleTree.populateTree(flagBits, hashes);
+    const merkleRoot = reverseBuffer(merkleTree.root()!);
+    return merkleRoot.equals(this.merkleRoot);
   };
 }
