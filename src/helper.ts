@@ -9,6 +9,10 @@ const sha1Hash = () => crypto.createHash("sha1");
 export const SIGHASH_ALL = 1;
 export const SIGHASH_NONE = 2;
 export const SIGHASH_SINGLE = 3;
+const BASE58_ALPHABET =
+  "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+export const TWO_WEEKS = 60 * 60 * 24 * 14;
+export const MAX_TARGET = 0xffff * 256 ** (0x1d - 3);
 
 // Double sha256 hash
 export const hash256 = (s: Buffer): Buffer => {
@@ -155,9 +159,6 @@ export const readVarint = (s: SmartBuffer): bigint => {
   }
 };
 
-const BASE58_ALPHABET =
-  "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-
 export const encodeBase58 = (s: Buffer): string => {
   let count = 0;
   for (const c of s) {
@@ -239,7 +240,9 @@ export const h160ToP2SHAddress = (
 };
 
 export const bitsToTarget = (bits: Buffer): bigint => {
+  // last byte is exponent
   const exponent = bits[bits.byteLength - 1];
+  // first 3 bytes are the coefficient
   const coefficient = toBigIntLE(bits.slice(0, bits.byteLength - 1));
   return coefficient * 256n ** (BigInt(exponent) - 3n);
 };
@@ -253,4 +256,47 @@ export const trimBuffer = (buffer: Buffer, side: "left" | "right"): Buffer => {
   return side === "left"
     ? buffer.slice(slicePoint)
     : buffer.slice(0, slicePoint + 1);
+};
+
+/**
+ * Turns a target integer back into bits, which is 4 bytes
+ * @param target
+ */
+export const targetToBits = (target: bigint): Buffer => {
+  // get rid of leading 0's
+  const rawBytes = trimBuffer(toBufferBE(target, 32), "left");
+  let exponent, coefficient;
+  if (rawBytes[0] > 0x7f) {
+    // if the first bit is 1, we have to start with 00
+    exponent = rawBytes.length + 1;
+    coefficient = Buffer.concat([Buffer.alloc(1, 0), rawBytes.slice(0, 2)]);
+  } else {
+    // otherwise, we can show the first 3 bytes
+    // exponent is the number of digits in base-256
+    exponent = rawBytes.length;
+    // coefficient is the first 3 digits of the base-256 number
+    coefficient = rawBytes.slice(0, 3);
+  }
+  const newBits = Buffer.concat([
+    reverseBuffer(coefficient),
+    Buffer.alloc(1, exponent)
+  ]);
+  return newBits;
+};
+
+/**
+ * Calculates the new bits given a 2016-block time differential and the previous bits
+ * @param prevBits
+ * @param timeDifferential
+ */
+export const calculateNewBits = (
+  prevBits: Buffer,
+  timeDifferential: number
+): Buffer => {
+  if (timeDifferential > TWO_WEEKS * 4) timeDifferential = TWO_WEEKS * 4;
+  if (timeDifferential < TWO_WEEKS / 4) timeDifferential = TWO_WEEKS / 4;
+  let newTarget =
+    (bitsToTarget(prevBits) * BigInt(timeDifferential)) / BigInt(TWO_WEEKS);
+  if (newTarget > MAX_TARGET) newTarget = BigInt(MAX_TARGET);
+  return targetToBits(newTarget);
 };

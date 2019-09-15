@@ -3,7 +3,8 @@ import {
   encodeBase58,
   readVarint,
   h160ToP2PKHAddress,
-  h160ToP2SHAddress
+  h160ToP2SHAddress,
+  calculateNewBits
 } from "../helper";
 import { SmartBuffer } from "smart-buffer";
 
@@ -82,4 +83,11 @@ test("p2sh address", () => {
   expect(h160ToP2SHAddress(h160, false)).toBe(want);
   want = "2N3u1R6uwQfuobCqbCgBkpsgBxvr1tZpe7B";
   expect(h160ToP2SHAddress(h160, true)).toBe(want);
+});
+
+test("calculateNewBits", () => {
+  const prevBits = Buffer.from("54d80118", "hex");
+  const timeDifferential = 302400;
+  const want = Buffer.from("00157617", "hex");
+  expect(calculateNewBits(prevBits, timeDifferential).equals(want)).toBe(true);
 });
