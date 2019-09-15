@@ -401,8 +401,10 @@ export const merkleParent = (hash1: Buffer, hash2: Buffer): Buffer => {
 
 export const merkleParentLevel = (hashes: Buffer[]): Buffer[] => {
   if (hashes.length === 1) throw Error("List of hashes must be > 1");
+  // if odd number of tx duplicate the last one
   if (hashes.length % 2 !== 0) hashes.push(hashes[hashes.length - 1]);
   const parentLevel: Buffer[] = [];
+  // in steps of two, calculate merkle parent
   for (let i = 0; i < hashes.length; i += 2) {
     const parent = merkleParent(hashes[i], hashes[i + 1]);
     parentLevel.push(parent);
@@ -411,6 +413,7 @@ export const merkleParentLevel = (hashes: Buffer[]): Buffer[] => {
 };
 
 export const merkleRoot = (hashes: Buffer[]): Buffer => {
+  // loop until left with single hash, the root
   while (hashes.length > 1) {
     hashes = merkleParentLevel(hashes);
   }
