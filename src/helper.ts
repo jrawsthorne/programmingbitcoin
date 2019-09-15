@@ -243,3 +243,14 @@ export const bitsToTarget = (bits: Buffer): bigint => {
   const coefficient = toBigIntLE(bits.slice(0, bits.byteLength - 1));
   return coefficient * 256n ** (BigInt(exponent) - 3n);
 };
+
+export const trimBuffer = (buffer: Buffer, side: "left" | "right"): Buffer => {
+  let slicePoint = side === "left" ? 0 : buffer.byteLength - 1;
+  while (true) {
+    if (buffer[slicePoint] !== 0) break;
+    side === "left" ? slicePoint++ : slicePoint--;
+  }
+  return side === "left"
+    ? buffer.slice(slicePoint)
+    : buffer.slice(0, slicePoint + 1);
+};

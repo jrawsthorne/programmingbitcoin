@@ -9,7 +9,8 @@ import {
   toIPFormat,
   encodeVarint,
   readVarint,
-  reverseBuffer
+  reverseBuffer,
+  trimBuffer
 } from "../helper";
 import { Socket } from "net";
 import { EventEmitter } from "events";
@@ -38,7 +39,7 @@ export class NetworkEnvelope {
       throw new UnexpectedNetworkMagic(expectedMagic, magic);
     }
     // Remove padded 0s from command
-    const command = Buffer.from(s.readBuffer(12).filter(byte => byte > 0x00));
+    const command = trimBuffer(s.readBuffer(12), "right");
     const payloadLength = s.readUInt32LE();
     const checksum = s.readBuffer(4);
     const payload = s.readBuffer(payloadLength);
