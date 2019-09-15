@@ -1,5 +1,5 @@
 import { SmartBuffer } from "smart-buffer";
-import { toBufferBE, toBigIntBE } from "bigint-buffer";
+import { toBufferBE, trimBuffer, toBigIntBE } from "../helper";
 
 export class Signature {
   constructor(public r: bigint, public s: bigint) {}
@@ -8,7 +8,7 @@ export class Signature {
     let rbin = toBufferBE(this.r, 32);
 
     // remove all null bytes at the beginning
-    rbin = rbin.slice(rbin.findIndex(byte => byte !== 0));
+    rbin = trimBuffer(rbin, "left");
 
     // if rbin has a high bit, add a 0x00
     if (rbin[0] & 0x80) {
@@ -22,7 +22,7 @@ export class Signature {
     ]);
     let sbin = toBufferBE(this.s, 32);
     // remove all null bytes at the beginning
-    sbin = sbin.slice(sbin.findIndex(byte => byte !== 0));
+    sbin = trimBuffer(sbin, "left");
     // if rbin has a high bit, add a 0x00
     if (sbin[0] & 0x80) {
       sbin = Buffer.concat([Buffer.alloc(1, 0), sbin]);

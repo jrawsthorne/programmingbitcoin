@@ -650,13 +650,6 @@ bcrypt-pbkdf@^1.0.0:
   dependencies:
     tweetnacl "^0.14.3"
 
-bigint-buffer@^1.1.2:
-  version "1.1.2"
-  resolved "https://registry.yarnpkg.com/bigint-buffer/-/bigint-buffer-1.1.2.tgz#b7edfaf3a88d0767aed7edc671d6bae4b1021575"
-  integrity sha512-gof9NgbodUgCXD2aUHfUKk5KUDk6/zPlwE+YYpRM2t7zS0K/6WipJFWfziIY+EavxFDuGUnuuQQzzvNcckPKNA==
-  dependencies:
-    bindings "^1.3.0"
-
 bindings@^1.3.0:
   version "1.5.0"
   resolved "https://registry.yarnpkg.com/bindings/-/bindings-1.5.0.tgz#10353c9e945334bc0511a6d90b38fbc7c9c504df"

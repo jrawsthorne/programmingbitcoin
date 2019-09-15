@@ -1,6 +1,5 @@
 import crypto from "crypto";
 import { SmartBuffer } from "smart-buffer";
-import { toBigIntLE, toBigIntBE, toBufferBE, toBufferLE } from "bigint-buffer";
 
 const ripemd160 = () => crypto.createHash("ripemd160");
 const sha256 = () => crypto.createHash("sha256");
@@ -88,15 +87,17 @@ export const randInt = (max: number) => {
   return Math.floor(Math.random() * Math.floor(max));
 };
 
-export const bigintBytes = (num: bigint): number => {
+export const bigintBytes = (num: bigint | number): number => {
+  if (typeof num === "number" && num > 2 ** 32 - 1) num = BigInt(num);
   let bytesNeeded = 0;
   let bitsNeeded = 0;
+
   while (num > 0) {
     if (bitsNeeded % 8 === 0) {
       bytesNeeded += 1;
     }
     bitsNeeded += 1;
-    num = num >> 1n;
+    num = typeof num === "bigint" ? num >> 1n : num >> 1;
   }
   return bytesNeeded;
 };
@@ -243,8 +244,8 @@ export const bitsToTarget = (bits: Buffer): bigint => {
   // last byte is exponent
   const exponent = bits[bits.byteLength - 1];
   // first 3 bytes are the coefficient
-  const coefficient = toBigIntLE(bits.slice(0, bits.byteLength - 1));
-  return coefficient * 256n ** (BigInt(exponent) - 3n);
+  const coefficient = toIntLE(bits.slice(0, bits.byteLength - 1));
+  return BigInt(coefficient) * 256n ** BigInt(exponent - 3);
 };
 
 export const trimBuffer = (buffer: Buffer, side: "left" | "right"): Buffer => {
@@ -265,7 +266,7 @@ export const trimBuffer = (buffer: Buffer, side: "left" | "right"): Buffer => {
 export const targetToBits = (target: bigint): Buffer => {
   // get rid of leading 0's
   const rawBytes = trimBuffer(toBufferBE(target, 32), "left");
-  let exponent, coefficient;
+  let exponent: number, coefficient: Buffer;
   if (rawBytes[0] > 0x7f) {
     // if the first bit is 1, we have to start with 00
     exponent = rawBytes.length + 1;
@@ -299,4 +300,97 @@ export const calculateNewBits = (
     (bitsToTarget(prevBits) * BigInt(timeDifferential)) / BigInt(TWO_WEEKS);
   if (newTarget > MAX_TARGET) newTarget = BigInt(MAX_TARGET);
   return targetToBits(newTarget);
+};
+
+export const toBuffer = (
+  num: number | bigint,
+  endian: "big" | "little" = "little",
+  byteLength?: number
+): Buffer => {
+  let length = byteLength || bigintBytes(num);
+  const bits = [];
+
+  while (num > 0) {
+    const remainder = typeof num === "bigint" ? num % 2n : num % 2;
+    bits.push(remainder);
+    num = typeof num === "bigint" ? num / 2n : Math.floor(num / 2);
+  }
+
+  let counter = 0;
+  let total = 0;
+  const buffer = Buffer.alloc(length);
+
+  const writeByte = (byte: number) => {
+    if (endian === "little") {
+      buffer[buffer.byteLength - length] = byte;
+    } else {
+      buffer[length - 1] = byte;
+    }
+  };
+
+  for (const bit of bits) {
+    if (counter % 8 == 0 && counter > 0) {
+      writeByte(total);
+      total = 0;
+      counter = 0;
+      length--;
+    }
+
+    if (bit) {
+      // bit is set
+      total += Math.pow(2, counter);
+    }
+    counter++;
+  }
+  writeByte(total);
+  return buffer;
+};
+
+export const toInt = (
+  buffer: Buffer,
+  endian: "big" | "little" = "little"
+): number | bigint => {
+  let total = buffer.byteLength > 4 ? 0n : 0;
+  for (
+    let i = endian === "little" ? buffer.byteLength - 1 : 0;
+    endian === "little" ? i >= 0 : i < buffer.byteLength;
+    endian === "little" ? i-- : i++
+  ) {
+    if (typeof total === "bigint") {
+      total = total * 2n ** 8n + BigInt(buffer[i]);
+    } else {
+      total = total * 2 ** 8 + buffer[i];
+    }
+  }
+  return total;
+};
+
+export const toBufferBE = (num: number | bigint, byteLength?: number): Buffer =>
+  toBuffer(num, "big", byteLength);
+
+export const toBufferLE = (num: number | bigint, byteLength?: number): Buffer =>
+  toBuffer(num, "little", byteLength);
+
+export const toBigIntLE = (buffer: Buffer): bigint => {
+  const num = toInt(buffer, "little");
+  return typeof num === "bigint" ? num : BigInt(num);
+};
+
+export const toBigIntBE = (buffer: Buffer): bigint => {
+  const num = toInt(buffer, "big");
+  return typeof num === "bigint" ? num : BigInt(num);
+};
+
+export const toIntLE = (buffer: Buffer): number => {
+  const num = toInt(buffer, "little");
+  if (typeof num === "bigint")
+    throw Error("Integer too large for number. Use toBigIntLE");
+  return num;
+};
+
+export const toIntBE = (buffer: Buffer): number => {
+  const num = toInt(buffer, "big");
+  if (typeof num === "bigint")
+    throw Error("Integer too large for number. Use toBigIntBE");
+  return num;
 };

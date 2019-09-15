@@ -2,8 +2,14 @@ import { ECCPoint } from "./ECCPoint";
 import { S256Field, P } from "./S256Field";
 import { Signature } from "./Signature";
 import { SmartBuffer } from "smart-buffer";
-import { hash160, encodeBase58Checksum, mod, pow } from "../helper";
-import { toBufferBE, toBigIntBE } from "bigint-buffer";
+import {
+  hash160,
+  encodeBase58Checksum,
+  mod,
+  pow,
+  toBufferBE,
+  toBigIntBE
+} from "../helper";
 import secp from "tiny-secp256k1";
 
 const A = 0n;

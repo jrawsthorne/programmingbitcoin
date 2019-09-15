@@ -17,7 +17,6 @@
     "test:dev": "jest"
   },
   "dependencies": {
-    "bigint-buffer": "^1.1.2",
     "dotenv": "^8.0.0",
     "node-fetch": "^2.6.0",
     "smart-buffer": "^4.0.2",

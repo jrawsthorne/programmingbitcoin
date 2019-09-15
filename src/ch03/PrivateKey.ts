@@ -1,8 +1,13 @@
 import { S256Point, G, N } from "./S256Point";
 import { Signature } from "./Signature";
 import crypto from "crypto";
-import { encodeBase58Checksum, pow, decodeBase58Wif } from "../helper";
-import { toBufferBE, toBigIntBE } from "bigint-buffer";
+import {
+  encodeBase58Checksum,
+  pow,
+  decodeBase58Wif,
+  toBufferBE,
+  toBigIntBE
+} from "../helper";
 import secp from "tiny-secp256k1";
 
 const sha256HMAC = (key: Buffer, data: Buffer): Buffer => {

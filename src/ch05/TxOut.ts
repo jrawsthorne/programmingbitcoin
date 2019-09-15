@@ -1,6 +1,6 @@
 import { SmartBuffer } from "smart-buffer";
-import { toBigIntLE, toBufferLE } from "bigint-buffer";
 import { Script } from "../ch06/Script";
+import { toBufferLE, toBigIntLE } from "../helper";
 
 export class TxOut {
   constructor(public amount: bigint, public scriptPubkey: Script) {}

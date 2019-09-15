@@ -3,12 +3,13 @@ import {
   readVarint,
   encodeVarint,
   SIGHASH_ALL,
-  reverseBuffer
+  reverseBuffer,
+  toBigIntBE,
+  toBigIntLE
 } from "../helper";
 import { TxIn } from "./TxIn";
 import { SmartBuffer } from "smart-buffer";
 import { TxOut } from "./TxOut";
-import { toBigIntBE, toBigIntLE } from "bigint-buffer";
 import { PrivateKey } from "../ch03/PrivateKey";
 import { Script } from "../ch06/Script";
 
