@@ -419,3 +419,14 @@ export const merkleRoot = (hashes: Buffer[]): Buffer => {
   }
   return hashes[0];
 };
+
+export const bytesToBitField = (bytes: Buffer): number[] => {
+  const flagBits: number[] = [];
+  for (let byte of bytes) {
+    for (let i = 0; i < 8; i++) {
+      flagBits.push(byte & 1);
+      byte >>= 1;
+    }
+  }
+  return flagBits;
+};
