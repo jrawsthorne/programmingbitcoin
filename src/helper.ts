@@ -409,3 +409,10 @@ export const merkleParentLevel = (hashes: Buffer[]): Buffer[] => {
   }
   return parentLevel;
 };
+
+export const merkleRoot = (hashes: Buffer[]): Buffer => {
+  while (hashes.length > 1) {
+    hashes = merkleParentLevel(hashes);
+  }
+  return hashes[0];
+};
