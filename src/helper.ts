@@ -394,3 +394,18 @@ export const toIntBE = (buffer: Buffer): number => {
     throw Error("Integer too large for number. Use toBigIntBE");
   return num;
 };
+
+export const merkleParent = (hash1: Buffer, hash2: Buffer): Buffer => {
+  return hash256(Buffer.concat([hash1, hash2]));
+};
+
+export const merkleParentLevel = (hashes: Buffer[]): Buffer[] => {
+  if (hashes.length === 1) throw Error("List of hashes must be > 1");
+  if (hashes.length % 2 !== 0) hashes.push(hashes[hashes.length - 1]);
+  const parentLevel: Buffer[] = [];
+  for (let i = 0; i < hashes.length; i += 2) {
+    const parent = merkleParent(hashes[i], hashes[i + 1]);
+    parentLevel.push(parent);
+  }
+  return parentLevel;
+};
