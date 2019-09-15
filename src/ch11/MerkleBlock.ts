@@ -1,6 +1,7 @@
+// depth first traversal
 export class MerkleTree {
   public maxDepth: number;
-  public nodes: Array<(Buffer | undefined)[]> = [];
+  public nodes: Array<(Buffer | null)[]> = [];
   public currentDepth: number = 0;
   public currentIndex: number = 0;
 
@@ -12,6 +13,53 @@ export class MerkleTree {
       this.nodes.push(levelHashes);
     }
   }
+
+  up = (): void => {
+    this.currentDepth -= 1;
+    this.currentIndex = Math.floor(this.currentIndex / 2);
+  };
+
+  left = (): void => {
+    this.currentDepth += 1;
+    this.currentIndex *= 2;
+  };
+
+  right = (): void => {
+    this.currentDepth += 1;
+    this.currentIndex = this.currentIndex * 2 + 1;
+  };
+
+  root = (): Buffer | null => {
+    return this.nodes[0][0];
+  };
+
+  setCurrentNode = (value: Buffer): void => {
+    this.nodes[this.currentDepth][this.currentIndex] = value;
+  };
+
+  getCurrentNode = (): Buffer | null => {
+    return this.nodes[this.currentDepth][this.currentIndex];
+  };
+
+  getLeftNode = (): Buffer | null => {
+    return this.nodes[this.currentDepth + 1][this.currentIndex * 2];
+  };
+
+  getRightNode = (): Buffer | null => {
+    return this.nodes[this.currentDepth + 1][this.currentIndex * 2 + 1];
+  };
+
+  isLeaf = (): boolean => {
+    return this.currentDepth === this.maxDepth;
+  };
+
+  // in certain situations we won't have a right child because
+  // we may be at the furthest right node of the level whose
+  // child level has an odd number of items
+  rightExists = (): boolean => {
+    if (this.isLeaf()) return false;
+    return this.nodes[this.currentDepth + 1].length > this.currentIndex * 2 + 1;
+  };
 
   toString = (): string => {
     const result: string[] = [];
