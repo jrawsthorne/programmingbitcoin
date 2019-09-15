@@ -1,3 +1,6 @@
+import { reverseBuffer, readVarint, merkleParent } from "../helper";
+import { SmartBuffer } from "smart-buffer";
+
 // depth first traversal
 export class MerkleTree {
   public maxDepth: number;
@@ -81,5 +84,49 @@ export class MerkleTree {
       result.push(items.join(", "));
     }
     return result.join("\n");
+  };
+}
+
+export class MerkleBlock {
+  constructor(
+    public version: number,
+    public prevBlock: Buffer,
+    public merkleRoot: Buffer,
+    public timestamp: number,
+    public bits: Buffer,
+    public nonce: Buffer,
+    public total: number,
+    public hashes: Buffer[],
+    public flags: Buffer
+  ) {}
+
+  static parse = (block: Buffer | SmartBuffer): MerkleBlock => {
+    const s = Buffer.isBuffer(block) ? SmartBuffer.fromBuffer(block) : block;
+    const version = s.readUInt32LE();
+    const prevBlock = reverseBuffer(s.readBuffer(32));
+    const merkleRoot = reverseBuffer(s.readBuffer(32));
+    const timestamp = s.readUInt32LE();
+    const bits = s.readBuffer(4);
+    const nonce = s.readBuffer(4);
+    const total = s.readUInt32LE();
+    const numHashes = readVarint(s);
+    const hashes: Buffer[] = [];
+    for (let i = 0; i < numHashes; i++) {
+      hashes.push(s.readBuffer(32));
+    }
+    const flagsLength = readVarint(s);
+    const flags = s.readBuffer(Number(flagsLength));
+
+    return new MerkleBlock(
+      version,
+      prevBlock,
+      merkleRoot,
+      timestamp,
+      bits,
+      nonce,
+      total,
+      hashes,
+      flags
+    );
   };
 }
