@@ -8,7 +8,10 @@ import {
   op2dup,
   opSwap,
   opNot,
-  opSha1
+  opSha1,
+  op2Dup,
+  op2Drop,
+  op3Dup
 } from "../Op";
 import { Script } from "../Script";
 
@@ -97,4 +100,29 @@ test("opSha1", () => {
       Buffer.from("2aae6c35c94fcfb415dbe95f408b9ce91ee846ed", "hex")
     )
   ).toBe(true);
+});
+
+test("op2Drop", () => {
+  const stack = [Buffer.from("01", "hex"), Buffer.from("02", "hex")];
+  expect(op2Drop(stack)).toBe(true);
+  expect(stack.length).toBe(0);
+});
+
+test("op2Dup", () => {
+  const stack = [Buffer.from("01", "hex"), Buffer.from("02", "hex")];
+  expect(op2Dup(stack)).toBe(true);
+  expect(stack[2]).toEqual(Buffer.from("01", "hex"));
+  expect(stack[3]).toEqual(Buffer.from("02", "hex"));
+});
+
+test("op3Dup", () => {
+  const stack = [
+    Buffer.from("01", "hex"),
+    Buffer.from("02", "hex"),
+    Buffer.from("03", "hex")
+  ];
+  expect(op3Dup(stack)).toBe(true);
+  expect(stack[3]).toEqual(Buffer.from("01", "hex"));
+  expect(stack[4]).toEqual(Buffer.from("02", "hex"));
+  expect(stack[5]).toEqual(Buffer.from("03", "hex"));
 });

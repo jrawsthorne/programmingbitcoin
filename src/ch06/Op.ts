@@ -171,8 +171,35 @@ export const opCheckMultisig = (stack: Stack, z: bigint): boolean => {
   return true;
 };
 
+export const op2Drop = (stack: Stack): boolean => {
+  if (stack.length < 2) return false;
+  stack.pop();
+  stack.pop();
+  return true;
+};
+
+export const op2Dup = (stack: Stack): boolean => {
+  if (stack.length < 2) return false;
+  stack.push(...stack.slice(stack.length - 2));
+  return true;
+};
+
+export const op3Dup = (stack: Stack): boolean => {
+  if (stack.length < 2) return false;
+  stack.push(...stack.slice(stack.length - 3));
+  return true;
+};
+
 export type Stack = Buffer[];
-export type Cmds = (Buffer | number)[];
+// Cmds type is either a single opcode or a push data opcode which contains
+// the opcode, the data and the length of the data
+export type Cmds = (PushDataOpcode | Opcode)[];
+
+export interface PushDataOpcode {
+  opcode: Opcode;
+  data: Buffer;
+  originalLength: number;
+}
 
 export const encodeNum = (num: number): Buffer => {
   if (num === 0) return Buffer.alloc(0);
@@ -271,6 +298,7 @@ export const OP_CODE_NAMES: NAMES = {
   97: "OP_NOP",
   99: "OP_IF",
   100: "OP_NOTIF",
+  102: "OP_VERNOTIF",
   103: "OP_ELSE",
   104: "OP_ENDIF",
   105: "OP_VERIFY",
@@ -337,11 +365,20 @@ export const OP_CODE_NAMES: NAMES = {
   182: "OP_NOP7",
   183: "OP_NOP8",
   184: "OP_NOP9",
-  185: "OP_NOP10"
+  185: "OP_NOP10",
+  229: "OP_RETURN_229",
+  238: "OP_RETURN_238"
 };
 
-export enum Opcodes {
+export enum Opcode {
   "OP_0" = 0,
+  "OP_PUSHBYTES_1" = 1,
+  "OP_PUSHBYTES_20" = 20,
+  "OP_PUSHBYTES_75" = 75,
+  "OP_PUSHDATA1" = 76,
+  "OP_PUSHDATA2" = 77,
+  "OP_PUSHDATA4" = 78,
+  "OP_VERNOTIF" = 102,
   "OP_2" = 82,
   "OP_6" = 86,
   "OP_IF" = 99,
@@ -363,5 +400,75 @@ export enum Opcodes {
   "OP_CHECKSIG" = 172,
   "OP_CHECKSIGVERIFY" = 173,
   "OP_CHECKMULTISIG" = 174,
-  "OP_CHECKMULTISIGVERIFY" = 175
+  "OP_CHECKMULTISIGVERIFY" = 175,
+  "OP_RETURN_186" = 186,
+  "OP_RETURN_187",
+  "OP_RETURN_188",
+  "OP_RETURN_189",
+  "OP_RETURN_190",
+  "OP_RETURN_191",
+  "OP_RETURN_192",
+  "OP_RETURN_193",
+  "OP_RETURN_194",
+  "OP_RETURN_195",
+  "OP_RETURN_196",
+  "OP_RETURN_197",
+  "OP_RETURN_198",
+  OP_RETURN_199,
+  OP_RETURN_200,
+  OP_RETURN_201,
+  OP_RETURN_202,
+  OP_RETURN_203,
+  OP_RETURN_204,
+  OP_RETURN_205,
+  OP_RETURN_206,
+  OP_RETURN_207,
+  OP_RETURN_208,
+  OP_RETURN_209,
+  OP_RETURN_210,
+  OP_RETURN_211,
+  OP_RETURN_212,
+  OP_RETURN_213,
+  OP_RETURN_214,
+  OP_RETURN_215,
+  OP_RETURN_216,
+  OP_RETURN_217,
+  OP_RETURN_218,
+  OP_RETURN_219,
+  OP_RETURN_220,
+  OP_RETURN_221,
+  OP_RETURN_222,
+  OP_RETURN_223,
+  OP_RETURN_224,
+  OP_RETURN_225,
+  OP_RETURN_226,
+  OP_RETURN_227,
+  OP_RETURN_228,
+  "OP_RETURN_229" = 229,
+  OP_RETURN_230,
+  OP_RETURN_231,
+  OP_RETURN_232,
+  OP_RETURN_233,
+  OP_RETURN_234,
+  OP_RETURN_235,
+  OP_RETURN_236,
+  OP_RETURN_237,
+  "OP_RETURN_238" = 238,
+  OP_RETURN_239,
+  OP_RETURN_240,
+  OP_RETURN_241,
+  OP_RETURN_242,
+  OP_RETURN_243,
+  OP_RETURN_244,
+  OP_RETURN_245,
+  OP_RETURN_246,
+  OP_RETURN_247,
+  OP_RETURN_248,
+  OP_RETURN_249,
+  OP_RETURN_250,
+  OP_RETURN_251,
+  OP_RETURN_252,
+  OP_RETURN_253,
+  OP_RETURN_254,
+  OP_RETURN_255
 }
