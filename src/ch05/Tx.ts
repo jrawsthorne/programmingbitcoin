@@ -5,13 +5,14 @@ import {
   SIGHASH_ALL,
   reverseBuffer,
   toBigIntBE,
-  toBigIntLE
+  toIntLE
 } from "../helper";
 import { TxIn } from "./TxIn";
 import { SmartBuffer } from "smart-buffer";
 import { TxOut } from "./TxOut";
 import { PrivateKey } from "../ch03/PrivateKey";
 import { Script } from "../ch06/Script";
+import { PushDataOpcode } from "../ch06/Op";
 
 export class Tx {
   constructor(
@@ -22,9 +23,17 @@ export class Tx {
     public testnet: boolean = false
   ) {}
 
-  static parse = (stream: Buffer, testnet: boolean = false) => {
-    const s = SmartBuffer.fromBuffer(stream);
+  static parse = (stream: Buffer | SmartBuffer, testnet: boolean = false) => {
+    const s = Buffer.isBuffer(stream) ? SmartBuffer.fromBuffer(stream) : stream;
     const version = s.readUInt32LE();
+    // TODO: Actually implement segwit
+    let segwit = false;
+    if (s.readBuffer(1).equals(Buffer.alloc(1))) {
+      s.readOffset += 1;
+      segwit = true;
+    } else {
+      s.readOffset -= 1;
+    }
     const numInputs = readVarint(s);
     let inputs: TxIn[] = [];
     for (let i = 0; i < numInputs; i++) {
@@ -34,6 +43,18 @@ export class Tx {
     let outputs: TxOut[] = [];
     for (let i = 0; i < numOutputs; i++) {
       outputs.push(TxOut.parse(s));
+    }
+    // TODO: Actually implement segwit
+    if (segwit) {
+      for (const _ of inputs) {
+        const numItems = readVarint(s);
+        for (let i = 0; i < numItems; i++) {
+          const itemLength = readVarint(s);
+          if (itemLength > 0) {
+            s.readOffset += Number(itemLength);
+          }
+        }
+      }
     }
     const locktime = s.readUInt32LE();
     return new Tx(version, inputs, outputs, locktime, testnet);
@@ -113,8 +134,10 @@ export class Tx {
     const scriptPubkey = await txIn.scriptPubkey(this.testnet);
     let redeemScript;
     if (scriptPubkey.isP2SH()) {
-      // last cmd if p2sh will be the redeem script
-      const cmd = txIn.scriptSig.cmds[txIn.scriptSig.cmds.length - 1] as Buffer;
+      // last cmd of p2sh will be the redeem script
+      const cmd = (txIn.scriptSig.cmds[
+        txIn.scriptSig.cmds.length - 1
+      ] as PushDataOpcode).data;
       // turn redeem script into valid script by appending varint of its length
       const rawRedeem = Buffer.concat([encodeVarint(cmd.byteLength), cmd]);
       redeemScript = Script.parse(SmartBuffer.fromBuffer(rawRedeem));
@@ -145,7 +168,10 @@ export class Tx {
     const der = privateKey.sign(z).der();
     const sig = Buffer.concat([der, Buffer.alloc(1, SIGHASH_ALL)]);
     const sec = privateKey.point.sec(compressed);
-    this.txIns[inputIndex].scriptSig = new Script([sig, sec]);
+    this.txIns[inputIndex].scriptSig = new Script([
+      { opcode: sig.length, data: sig, originalLength: sig.length },
+      { opcode: sec.length, data: sec, originalLength: sec.length }
+    ]);
     return this.verifyInput(inputIndex);
   };
 
@@ -161,8 +187,10 @@ export class Tx {
 
   coinbaseHeight = (): number => {
     if (!this.isCoinbase()) throw Error("Not a coinbase transaction");
-    // TODO: Write non bigint function to this, fine for now
-    return Number(toBigIntLE(this.txIns[0].scriptSig.cmds[0] as Buffer));
+    if (typeof this.txIns[0].scriptSig.cmds[0] === "number") {
+      throw new Error("Invalid scriptsig");
+    }
+    return toIntLE((this.txIns[0].scriptSig.cmds[0] as PushDataOpcode).data);
   };
 
   toString = (): string => {
