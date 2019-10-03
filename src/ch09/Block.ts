@@ -4,7 +4,7 @@ import {
   hash256,
   bitsToTarget,
   toBigIntLE,
-  merkleRoot
+  calculateMerkleRoot,
 } from "../helper";
 
 export const GENESIS_BLOCK = Buffer.from(
@@ -84,12 +84,14 @@ export class Block {
    * Gets the merkle root of the txHashes and checks that it's
    * the same as the merkle root of this block.
    */
-  validateMerkleRoot(): boolean {
+  validateMerkleRoot = (): boolean => {
     if (!this.txHashes) throw Error("No txHashes");
     // reverse each item in this.txHashes
     const reversedTxHashes = this.txHashes.map(txHash => reverseBuffer(txHash));
     // compute the Merkle Root and reverse
-    const calculatedMerkleRoot = reverseBuffer(merkleRoot(reversedTxHashes));
+    const calculatedMerkleRoot = reverseBuffer(
+      calculateMerkleRoot(reversedTxHashes)
+    );
     return calculatedMerkleRoot.equals(this.merkleRoot);
-  }
+  };
 }

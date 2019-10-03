@@ -7,7 +7,7 @@ import {
   calculateNewBits,
   merkleParent,
   merkleParentLevel,
-  merkleRoot
+  calculateMerkleRoot
 } from "../helper";
 import { SmartBuffer } from "smart-buffer";
 
@@ -157,5 +157,5 @@ test("merkleRoot", () => {
   const wantHexHash =
     "acbcab8bcc1af95d8d563b77d24c3d19b18f1486383d75a5085c4e86c86beed6";
   const wantHash = Buffer.from(wantHexHash, "hex");
-  expect(merkleRoot(txHashes)).toEqual(wantHash);
+  expect(calculateMerkleRoot(txHashes)).toEqual(wantHash);
 });
