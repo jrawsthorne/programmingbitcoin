@@ -1,28 +1,33 @@
-import { readVarint, encodeVarint } from "../helper";
+import { readVarint, encodeVarint, toBufferLE } from "../helper";
 import { SmartBuffer } from "smart-buffer";
 import {
   OP_CODE_NAMES,
   OP_CODE_FUNCTIONS,
   Stack,
   Cmds,
-  Opcodes,
+  Opcode,
   opHash160,
   opEqual,
-  opVerify
+  opVerify,
+  PushDataOpcode
 } from "./Op";
 
 export const p2pkhScript = (h160: Buffer): Script => {
   return new Script([
-    Opcodes.OP_DUP,
-    Opcodes.OP_HASH160,
-    h160,
-    Opcodes.OP_EQUALVERIFY,
-    Opcodes.OP_CHECKSIG
+    Opcode.OP_DUP,
+    Opcode.OP_HASH160,
+    { data: h160, opcode: Opcode.OP_PUSHBYTES_20, originalLength: 20 },
+    Opcode.OP_EQUALVERIFY,
+    Opcode.OP_CHECKSIG
   ]);
 };
 
 export const p2shScript = (h160: Buffer): Script => {
-  return new Script([Opcodes.OP_HASH160, h160, Opcodes.OP_EQUAL]);
+  return new Script([
+    Opcode.OP_HASH160,
+    { data: h160, opcode: Opcode.OP_PUSHBYTES_20, originalLength: 20 },
+    Opcode.OP_EQUAL
+  ]);
 };
 
 export class Script {
@@ -45,51 +50,51 @@ export class Script {
       if (typeof cmd === "number") {
         const operation = OP_CODE_FUNCTIONS[cmd];
         switch (cmd) {
-          case Opcodes.OP_IF:
-          case Opcodes.OP_NOTIF:
+          case Opcode.OP_IF:
+          case Opcode.OP_NOTIF:
             if (!operation(stack, cmds)) {
               console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
               return false;
             }
             break;
-          case Opcodes.OP_TOALTSTACK:
-          case Opcodes.OP_FROMALTSTACK:
+          case Opcode.OP_TOALTSTACK:
+          case Opcode.OP_FROMALTSTACK:
             if (!operation(stack, altStack)) {
               console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
               return false;
             }
             break;
 
-          case Opcodes.OP_CHECKSIG:
-          case Opcodes.OP_CHECKSIGVERIFY:
-          case Opcodes.OP_CHECKMULTISIG:
-          case Opcodes.OP_CHECKMULTISIGVERIFY:
+          case Opcode.OP_CHECKSIG:
+          case Opcode.OP_CHECKSIGVERIFY:
+          case Opcode.OP_CHECKMULTISIG:
+          case Opcode.OP_CHECKMULTISIGVERIFY:
             if (!operation(stack, z)) {
               console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
               return false;
             }
             break;
           default:
-            if (!operation(stack)) {
+            if (!operation || !operation(stack)) {
               console.info(`bad op: ${OP_CODE_NAMES[cmd]}`);
               return false;
             }
             break;
         }
       } else {
-        stack.push(cmd);
+        stack.push(cmd.data);
         // p2sh check bip16
         // structure is:
         // OP_HASH160 <hash> OP_EQUAL
         if (
-          cmd.length === 3 &&
-          cmds[0] == Opcodes.OP_HASH160 &&
-          Buffer.isBuffer(cmds[1]) &&
-          (cmds[1] as Buffer).byteLength === 20 &&
-          cmds[2] === Opcodes.OP_EQUAL
+          cmds.length === 3 &&
+          cmds[0] == Opcode.OP_HASH160 &&
+          typeof cmds[1] !== "number" &&
+          (cmds[1] as PushDataOpcode).data.byteLength === 20 &&
+          cmds[2] === Opcode.OP_EQUAL
         ) {
           cmds.pop(); // know this is OP_HASH160
-          const h160 = cmds.pop()! as Buffer; // <hash>
+          const { data: h160 } = cmds.pop()! as PushDataOpcode; // know this is <hash>
           cmds.pop(); // know this is OP_EQUAL
           // run typical OP_HASH160, push 20 byte hash and OP_EQUAL
           // redeem script is currently on top of stack
@@ -103,7 +108,10 @@ export class Script {
           // now validated redeem script hashes to h160
 
           // format redeem script ready to be parsed
-          const redeemScript = Buffer.concat([encodeVarint(cmd.length), cmd]);
+          const redeemScript = Buffer.concat([
+            encodeVarint(cmd.originalLength),
+            cmd.data
+          ]);
           // extend command set with parsed commands from redeeem script
           cmds.push(...Script.parse(SmartBuffer.fromBuffer(redeemScript)).cmds);
         }
@@ -116,7 +124,7 @@ export class Script {
 
   static parse = (s: SmartBuffer): Script => {
     const length = readVarint(s);
-    const cmds: (Buffer | number)[] = [];
+    const cmds: Cmds = [];
     let count = 0;
     while (count < length) {
       let current = s.readBuffer(1);
@@ -124,22 +132,59 @@ export class Script {
       let currentByte = current[0];
       if (currentByte >= 1 && currentByte <= 75) {
         let n = currentByte;
-        cmds.push(s.readBuffer(n));
+        if (n + count > length) {
+          n = Number(length) - count;
+        }
+        const data = s.readBuffer(n);
+        cmds.push({ opcode: currentByte, data, originalLength: currentByte });
         count += n;
       } else if (currentByte === 76) {
-        const dataLength = s.readUInt8();
-        cmds.push(s.readBuffer(dataLength));
+        if (count + 1 > length) {
+          cmds.push(currentByte);
+          break;
+        }
+        const parsedDataLength = s.readUInt8();
+        let dataLength = parsedDataLength;
+        if (dataLength + count + 1 > length) {
+          dataLength = Number(length) - count - 1;
+        }
+        const data = s.readBuffer(dataLength);
+        cmds.push({
+          opcode: currentByte,
+          data,
+          originalLength: parsedDataLength
+        });
         count += dataLength + 1;
       } else if (currentByte === 77) {
-        const dataLength = s.readUInt16LE();
-        cmds.push(s.readBuffer(dataLength));
+        if (count + 2 > length) {
+          if (count + 1 > length) {
+            cmds.push(currentByte);
+          } else {
+            const nextByte = s.readUInt8();
+            cmds.push(currentByte);
+            cmds.push(nextByte);
+            count += 1;
+          }
+          break;
+        }
+        const parsedDataLength = s.readUInt16LE();
+        let dataLength = parsedDataLength;
+        if (dataLength + count + 2 > length) {
+          dataLength = Number(length) - count - 2;
+        }
+        const data = s.readBuffer(dataLength);
+        cmds.push({
+          opcode: currentByte,
+          data,
+          originalLength: parsedDataLength
+        });
         count += dataLength + 2;
       } else {
         const opCode = currentByte;
         cmds.push(opCode);
       }
     }
-    if (BigInt(count) !== length) {
+    if (count !== Number(length)) {
       throw Error("parsing script failed");
     }
     return new Script(cmds);
@@ -151,19 +196,26 @@ export class Script {
       if (typeof cmd === "number") {
         s.writeUInt8(cmd);
       } else {
-        const length = cmd.length;
-        if (length < 75) {
-          s.writeUInt8(length);
-        } else if (length > 75 && length < 0x100) {
-          s.writeUInt8(76);
-          s.writeUInt8(length);
-        } else if (length >= 0x100 && length <= 520) {
-          s.writeUInt8(77);
-          s.writeUInt16LE(length);
-        } else {
-          throw Error("too long an cmd");
+        const pushOpcode = cmd.opcode;
+        if (pushOpcode <= Opcode.OP_PUSHBYTES_75) {
+          s.writeBuffer(Buffer.concat([Buffer.alloc(1, pushOpcode), cmd.data]));
+        } else if (pushOpcode === Opcode.OP_PUSHDATA1) {
+          s.writeBuffer(
+            Buffer.concat([
+              Buffer.alloc(1, pushOpcode),
+              Buffer.alloc(1, cmd.originalLength),
+              cmd.data
+            ])
+          );
+        } else if (pushOpcode === Opcode.OP_PUSHDATA2) {
+          s.writeBuffer(
+            Buffer.concat([
+              Buffer.alloc(1, pushOpcode),
+              toBufferLE(cmd.originalLength, 2),
+              cmd.data
+            ])
+          );
         }
-        s.writeBuffer(cmd);
       }
     }
     return s.toBuffer();
@@ -178,22 +230,22 @@ export class Script {
   isP2PKH = (): boolean => {
     return (
       this.cmds.length === 5 &&
-      this.cmds[0] === Opcodes.OP_DUP &&
-      this.cmds[1] === Opcodes.OP_HASH160 &&
-      Buffer.isBuffer(this.cmds[2]) &&
-      (this.cmds[2] as Buffer).byteLength === 20 &&
-      this.cmds[3] === Opcodes.OP_EQUALVERIFY &&
-      this.cmds[4] === Opcodes.OP_CHECKSIG
+      this.cmds[0] === Opcode.OP_DUP &&
+      this.cmds[1] === Opcode.OP_HASH160 &&
+      typeof this.cmds[2] !== "number" &&
+      (this.cmds[2] as PushDataOpcode).data.byteLength === 20 &&
+      this.cmds[3] === Opcode.OP_EQUALVERIFY &&
+      this.cmds[4] === Opcode.OP_CHECKSIG
     );
   };
 
   isP2SH = (): boolean => {
     return (
       this.cmds.length === 3 &&
-      this.cmds[0] === Opcodes.OP_HASH160 &&
-      Buffer.isBuffer(this.cmds[1]) &&
-      (this.cmds[1] as Buffer).byteLength === 20 &&
-      this.cmds[2] === Opcodes.OP_EQUAL
+      this.cmds[0] === Opcode.OP_HASH160 &&
+      typeof this.cmds[1] !== "number" &&
+      (this.cmds[1] as PushDataOpcode).data.byteLength === 20 &&
+      this.cmds[2] === Opcode.OP_EQUAL
     );
   };
 
@@ -209,7 +261,7 @@ export class Script {
         }
         result.push(name);
       } else {
-        result.push(cmd.toString("hex"));
+        result.push(cmd.data.toString("hex"));
       }
     }
     return result.join(" ");
