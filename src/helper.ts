@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { SmartBuffer } from "smart-buffer";
 
 const ripemd160 = () => crypto.createHash("ripemd160");
-const sha256 = () => crypto.createHash("sha256");
+const _sha256 = () => crypto.createHash("sha256");
 const sha1Hash = () => crypto.createHash("sha1");
 
 export const SIGHASH_ALL = 1;
@@ -13,11 +13,17 @@ const BASE58_ALPHABET =
 export const TWO_WEEKS = 60 * 60 * 24 * 14;
 export const MAX_TARGET = 0xffff * 256 ** (0x1d - 3);
 
+export const sha256 = (s: Buffer): Buffer => {
+  return _sha256()
+    .update(s)
+    .digest();
+};
+
 // Double sha256 hash
 export const hash256 = (s: Buffer): Buffer => {
-  return sha256()
+  return _sha256()
     .update(
-      sha256()
+      _sha256()
         .update(s)
         .digest()
     )
@@ -28,7 +34,7 @@ export const hash256 = (s: Buffer): Buffer => {
 export const hash160 = (s: Buffer): Buffer => {
   return ripemd160()
     .update(
-      sha256()
+      _sha256()
         .update(s)
         .digest()
     )
