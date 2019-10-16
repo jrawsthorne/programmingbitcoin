@@ -12,7 +12,7 @@ import { TxIn } from "./TxIn";
 import { SmartBuffer } from "smart-buffer";
 import { TxOut } from "./TxOut";
 import { PrivateKey } from "../ch03/PrivateKey";
-import { Script } from "../ch06/Script";
+import { Script, p2pkhScript } from "../ch06/Script";
 import { PushDataOpcode } from "../ch06/Op";
 
 export class Tx {
@@ -278,7 +278,9 @@ export class Tx {
   verifyInput = async (inputIndex: number): Promise<boolean> => {
     const txIn = this.txIns[inputIndex];
     const scriptPubkey = await txIn.scriptPubkey(this.testnet);
-    let redeemScript;
+    let redeemScript: Script | undefined;
+    let z: bigint;
+    let witness: Buffer[] | undefined;
     if (scriptPubkey.isP2SH()) {
       // last cmd of p2sh will be the redeem script
       const cmd = (txIn.scriptSig.cmds[
@@ -287,10 +289,36 @@ export class Tx {
       // turn redeem script into valid script by appending varint of its length
       const rawRedeem = Buffer.concat([encodeVarint(cmd.byteLength), cmd]);
       redeemScript = Script.parse(SmartBuffer.fromBuffer(rawRedeem));
+      if (redeemScript.isP2WPKH()) {
+        z = await this.sigHashBIP143(inputIndex, redeemScript);
+        witness = txIn.witness;
+      } else if (redeemScript.isP2WSH()) {
+        // last item of witness field contains witnessScript
+        const cmd = txIn.witness[txIn.witness.length - 1];
+        const rawWitness = Buffer.concat([encodeVarint(cmd.byteLength), cmd]);
+        const witnessScript = Script.parse(SmartBuffer.fromBuffer(rawWitness));
+        z = await this.sigHashBIP143(inputIndex, undefined, witnessScript);
+        witness = txIn.witness;
+      } else {
+        z = await this.sigHash(inputIndex, redeemScript);
     }
-    const z = await this.sigHash(inputIndex, redeemScript);
+    } else {
+      if (scriptPubkey.isP2WPKH()) {
+        z = await this.sigHashBIP143(inputIndex);
+        witness = txIn.witness;
+      } else if (scriptPubkey.isP2WSH()) {
+        // last item of witness field contains witnessScript
+        const cmd = txIn.witness[txIn.witness.length - 1];
+        const rawWitness = Buffer.concat([encodeVarint(cmd.byteLength), cmd]);
+        const witnessScript = Script.parse(SmartBuffer.fromBuffer(rawWitness));
+        z = await this.sigHashBIP143(inputIndex, undefined, witnessScript);
+        witness = txIn.witness;
+      } else {
+        z = await this.sigHash(inputIndex);
+      }
+    }
     const combinedScript = txIn.scriptSig.add(scriptPubkey);
-    return combinedScript.evaluate(z);
+    return combinedScript.evaluate(z, witness || []);
   };
 
   verify = async (): Promise<boolean> => {
