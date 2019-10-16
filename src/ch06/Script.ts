@@ -65,7 +65,7 @@ export class Script {
     return new Script([...this.cmds, ...other.cmds]);
   };
 
-  evaluate = (z: bigint): boolean => {
+  evaluate = (z: bigint, witness: Buffer[]): boolean => {
     const cmds: Cmds = [...this.cmds];
     const stack: Stack = [];
     const altStack: Stack = [];
@@ -107,6 +107,7 @@ export class Script {
         }
       } else {
         stack.push(cmd.data);
+
         // p2sh check bip16
         // structure is:
         // OP_HASH160 <hash> OP_EQUAL
@@ -140,6 +141,60 @@ export class Script {
           ]);
           // extend command set with parsed commands from redeeem script
           cmds.push(...Script.parse(SmartBuffer.fromBuffer(redeemScript)).cmds);
+        }
+
+        // p2wpkh check bip141
+        // strcture is:
+        // OP_O <20-byte hash>
+        if (
+          stack.length === 2 &&
+          stack[0].equals(Buffer.alloc(0)) &&
+          stack[1].length === 20
+        ) {
+          const h160 = stack.pop()!; // know this is 20 byte hash
+          stack.pop(); // know this is witness version, 0
+          cmds.push(
+            ...witness.map(item => ({
+              opcode: item.byteLength,
+              data: item,
+              originalLength: item.byteLength
+            }))
+          );
+          cmds.push(...p2pkhScript(h160).cmds);
+        }
+
+        // p2wsh check bip141
+        // strcture is:
+        // OP_O <32-byte hash>
+        if (
+          stack.length === 2 &&
+          stack[0].equals(Buffer.alloc(0)) &&
+          stack[1].length === 32
+        ) {
+          const s256 = stack.pop()!; // know this is 32 byte hash
+          stack.pop(); // know this is witness version, 0
+          // witness script is last item of witness
+          const witnessScript = witness[witness.length - 1];
+          // push everything but witness script from witness to the command set
+          cmds.push(
+            ...witness.slice(0, witness.length - 1).map(item => ({
+              opcode: item.length,
+              data: item,
+              originalLength: item.length
+            }))
+          );
+          if (!s256.equals(sha256(witnessScript))) {
+            console.log("bad witness script sha256");
+            return false;
+          }
+          const witnessRaw = Buffer.concat([
+            encodeVarint(witnessScript.byteLength),
+            witnessScript
+          ]);
+          const witnessScriptCmds = Script.parse(
+            SmartBuffer.fromBuffer(witnessRaw)
+          ).cmds;
+          cmds.push(...witnessScriptCmds);
         }
       }
     }
