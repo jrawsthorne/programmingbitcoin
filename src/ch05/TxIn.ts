@@ -9,7 +9,8 @@ export class TxIn {
     public prevTx: Buffer,
     public prevIndex: number,
     public scriptSig: Script = new Script(),
-    public sequence: number = 0xffffffff
+    public sequence: number = 0xffffffff,
+    public witness: Buffer[] = []
   ) {}
 
   static parse = (s: SmartBuffer) => {

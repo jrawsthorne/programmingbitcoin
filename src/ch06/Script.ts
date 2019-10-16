@@ -93,6 +93,8 @@ export class Script {
           (cmds[1] as PushDataOpcode).data.byteLength === 20 &&
           cmds[2] === Opcode.OP_EQUAL
         ) {
+          cmds.pop(); // know this is OP_EQUAL
+          const { data: h160 } = cmds.pop()! as PushDataOpcode; // know this is <hash>
           cmds.pop(); // know this is OP_HASH160
           const { data: h160 } = cmds.pop()! as PushDataOpcode; // know this is <hash>
           cmds.pop(); // know this is OP_EQUAL
