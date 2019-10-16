@@ -30,6 +30,30 @@ export const p2shScript = (h160: Buffer): Script => {
   ]);
 };
 
+// OP_0 <20-byte-hash>
+export const p2wpkhScript = (h160: Buffer): Script => {
+  return new Script([
+    Opcode.OP_0,
+    {
+      data: h160,
+      opcode: h160.byteLength,
+      originalLength: h160.byteLength
+    }
+  ]);
+};
+
+// OP_0 <32-byte-hash>
+export const p2wshScript = (s256: Buffer): Script => {
+  return new Script([
+    Opcode.OP_0,
+    {
+      data: s256,
+      opcode: s256.byteLength,
+      originalLength: s256.byteLength
+    }
+  ]);
+};
+
 export class Script {
   public cmds: Cmds;
 
@@ -248,6 +272,24 @@ export class Script {
       typeof this.cmds[1] !== "number" &&
       (this.cmds[1] as PushDataOpcode).data.byteLength === 20 &&
       this.cmds[2] === Opcode.OP_EQUAL
+    );
+  };
+
+  isP2WPKH = (): boolean => {
+    return (
+      this.cmds.length === 2 &&
+      this.cmds[0] === Opcode.OP_0 &&
+      typeof this.cmds[1] !== "number" &&
+      (this.cmds[1] as PushDataOpcode).data.byteLength === 20
+    );
+  };
+
+  isP2WSH = (): boolean => {
+    return (
+      this.cmds.length === 2 &&
+      this.cmds[0] === Opcode.OP_0 &&
+      typeof this.cmds[1] !== "number" &&
+      (this.cmds[1] as PushDataOpcode).data.byteLength === 32
     );
   };
 
