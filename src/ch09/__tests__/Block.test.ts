@@ -12,15 +12,15 @@ test("parse", () => {
     "000000000000000000fd0c220a0a8c3bc5a7b487e8c8de0dfa2373b12894c38e",
     "hex"
   );
-  expect(block.prevBlock.equals(want)).toBe(true);
+  expect(block.prevBlock).toEqual(want);
   want = Buffer.from(
     "be258bfd38db61f957315c3f9e9c5e15216857398d50402d5089a8e0fc50075b",
     "hex"
   );
-  expect(block.merkleRoot.equals(want)).toBe(true);
+  expect(block.merkleRoot).toEqual(want);
   expect(block.timestamp).toBe(0x59a7771e);
-  expect(block.bits.equals(Buffer.from("e93c0118", "hex"))).toBe(true);
-  expect(block.nonce.equals(Buffer.from("a4ffd71d", "hex"))).toBe(true);
+  expect(block.bits).toEqual(Buffer.from("e93c0118", "hex"));
+  expect(block.nonce).toEqual(Buffer.from("a4ffd71d", "hex"));
 });
 
 test("serialize", () => {
@@ -30,7 +30,7 @@ test("serialize", () => {
   );
 
   const block = Block.parse(blockRaw);
-  expect(block.serialize().equals(blockRaw)).toBe(true);
+  expect(block.serialize(true)).toEqual(blockRaw);
 });
 
 test("hash", () => {
@@ -40,16 +40,12 @@ test("hash", () => {
   );
 
   const block = Block.parse(blockRaw);
-  expect(
-    block
-      .hash()
-      .equals(
-        Buffer.from(
-          "0000000000000000007e9e4c586439b0cdbe13b1370bdd9435d76a644d047523",
-          "hex"
-        )
-      )
-  ).toBe(true);
+  expect(block.hash()).toEqual(
+    Buffer.from(
+      "0000000000000000007e9e4c586439b0cdbe13b1370bdd9435d76a644d047523",
+      "hex"
+    )
+  );
 });
 
 test("bip9", () => {

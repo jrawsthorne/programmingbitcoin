@@ -5,7 +5,10 @@ import {
   bitsToTarget,
   toBigIntLE,
   calculateMerkleRoot,
+  readVarint,
+  encodeVarint
 } from "../helper";
+import { Tx } from "../ch05/Tx";
 
 export const GENESIS_BLOCK = Buffer.from(
   "0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c",
@@ -25,6 +28,7 @@ export class Block {
     public timestamp: number,
     public bits: Buffer,
     public nonce: Buffer,
+    public transactions: Tx[],
     public txHashes?: Buffer[] // transactions must be ordered
   ) {}
 
@@ -36,22 +40,45 @@ export class Block {
     const timestamp = s.readUInt32LE();
     const bits = s.readBuffer(4);
     const nonce = s.readBuffer(4);
-    return new Block(version, prevBlock, merkleRoot, timestamp, bits, nonce);
+    const transactions = [];
+    if (s.remaining()) {
+      const txCount = readVarint(s);
+      for (let i = 0; i < txCount; i++) {
+        transactions.push(Tx.parse(s));
+      }
+    }
+
+    return new Block(
+      version,
+      prevBlock,
+      merkleRoot,
+      timestamp,
+      bits,
+      nonce,
+      transactions
+    );
   };
 
-  serialize = (): Buffer => {
-    const s = SmartBuffer.fromSize(80);
+  serialize = (headerOnly: boolean): Buffer => {
+    const s = headerOnly ? SmartBuffer.fromSize(80) : new SmartBuffer();
     s.writeUInt32LE(this.version);
     s.writeBuffer(reverseBuffer(this.prevBlock));
     s.writeBuffer(reverseBuffer(this.merkleRoot));
     s.writeUInt32LE(this.timestamp);
     s.writeBuffer(this.bits);
     s.writeBuffer(this.nonce);
+    if (!headerOnly) {
+      s.writeBuffer(encodeVarint(this.transactions.length));
+      for (const transaction of this.transactions) {
+        s.writeBuffer(transaction.serialize());
+      }
+    }
     return s.toBuffer();
   };
 
   hash = (): Buffer => {
-    return reverseBuffer(hash256(this.serialize()));
+    // hash uses serialized block header
+    return reverseBuffer(hash256(this.serialize(true)));
   };
 
   bip9 = (): boolean => {
@@ -76,7 +103,8 @@ export class Block {
   };
 
   checkPoW = (): boolean => {
-    const proof = toBigIntLE(hash256(this.serialize()));
+    // checkPow only uses serialized block header
+    const proof = toBigIntLE(hash256(this.serialize(true)));
     return proof < this.target();
   };
 
@@ -85,9 +113,20 @@ export class Block {
    * the same as the merkle root of this block.
    */
   validateMerkleRoot = (): boolean => {
-    if (!this.txHashes) throw Error("No txHashes");
+    let reversedTxHashes: Buffer[] = [];
+
+    if (this.transactions.length < 1) {
+      if (!this.txHashes || this.txHashes.length < 1) {
+        throw Error("No transactions");
+      } else {
     // reverse each item in this.txHashes
-    const reversedTxHashes = this.txHashes.map(txHash => reverseBuffer(txHash));
+        reversedTxHashes = this.txHashes.map(txHash => reverseBuffer(txHash));
+      }
+    } else {
+      // reverse each item in this.transactions
+      reversedTxHashes = this.transactions.map(tx => reverseBuffer(tx.hash()));
+    }
+
     // compute the Merkle Root and reverse
     const calculatedMerkleRoot = reverseBuffer(
       calculateMerkleRoot(reversedTxHashes)
