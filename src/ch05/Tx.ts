@@ -16,6 +16,9 @@ import { Script } from "../ch06/Script";
 import { PushDataOpcode } from "../ch06/Op";
 
 export class Tx {
+  private _hashPrevouts?: Buffer;
+  private _hashSequence?: Buffer;
+  private _hashOutputs?: Buffer;
   constructor(
     public version: number,
     public txIns: TxIn[],
@@ -203,6 +206,39 @@ export class Tx {
     s.writeUInt32LE(SIGHASH_ALL);
     const h256 = hash256(s.toBuffer());
     return toBigIntBE(h256);
+  };
+
+  hashPrevouts = (): Buffer => {
+    if (!this._hashPrevouts) {
+      const allPrevouts = new SmartBuffer();
+      const allSequence = new SmartBuffer();
+      for (const txIn of this.txIns) {
+        allPrevouts.writeBuffer(reverseBuffer(txIn.prevTx));
+        allPrevouts.writeUInt32LE(txIn.prevIndex);
+        allSequence.writeUInt32LE(txIn.sequence);
+      }
+      this._hashPrevouts = hash256(allPrevouts.toBuffer());
+      this._hashSequence = hash256(allSequence.toBuffer());
+    }
+    return this._hashPrevouts;
+  };
+
+  hashSequence = (): Buffer => {
+    if (!this._hashSequence) {
+      this.hashPrevouts(); // will also calculate hashSequence
+    }
+    return this._hashSequence!;
+  };
+
+  hashOutputs = (): Buffer => {
+    if (!this._hashOutputs) {
+      const allOutputs = new SmartBuffer();
+      for (const txOut of this.txOuts) {
+        allOutputs.writeBuffer(txOut.serialize());
+      }
+      this._hashOutputs = hash256(allOutputs.toBuffer());
+    }
+    return this._hashOutputs;
   };
 
   verifyInput = async (inputIndex: number): Promise<boolean> => {
