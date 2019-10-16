@@ -208,6 +208,40 @@ export class Tx {
     return toBigIntBE(h256);
   };
 
+  sigHashBIP143 = async (
+    inputIndex: number,
+    redeemScript?: Script,
+    witnessScript?: Script
+  ): Promise<bigint> => {
+    const txIn = this.txIns[inputIndex];
+    const s = new SmartBuffer();
+    s.writeUInt32LE(this.version);
+    s.writeBuffer(this.hashPrevouts());
+    s.writeBuffer(this.hashSequence());
+    s.writeBuffer(reverseBuffer(txIn.prevTx));
+    s.writeUInt32LE(txIn.prevIndex);
+    let scriptCode: Buffer;
+    if (witnessScript) {
+      scriptCode = witnessScript.serialize();
+    } else if (redeemScript) {
+      scriptCode = p2pkhScript(
+        (redeemScript.cmds[1] as PushDataOpcode).data
+      ).serialize();
+    } else {
+      const scriptPubkey = await txIn.scriptPubkey(this.testnet);
+      scriptCode = p2pkhScript(
+        (scriptPubkey.cmds[1] as PushDataOpcode).data
+      ).serialize();
+    }
+    s.writeBuffer(scriptCode);
+    s.writeBuffer(toBufferLE(await txIn.value(), 8));
+    s.writeUInt32LE(txIn.sequence);
+    s.writeBuffer(this.hashOutputs());
+    s.writeUInt32LE(this.locktime);
+    s.writeUInt32LE(SIGHASH_ALL);
+    return toBigIntBE(hash256(s.toBuffer()));
+  };
+
   hashPrevouts = (): Buffer => {
     if (!this._hashPrevouts) {
       const allPrevouts = new SmartBuffer();
