@@ -9,6 +9,7 @@ import {
   encodeVarint
 } from "../helper";
 import { Tx } from "../ch05/Tx";
+import { Opcode, PushDataOpcode } from "../ch06/Op";
 
 export const GENESIS_BLOCK = Buffer.from(
   "0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c",
@@ -119,7 +120,7 @@ export class Block {
       if (!this.txHashes || this.txHashes.length < 1) {
         throw Error("No transactions");
       } else {
-    // reverse each item in this.txHashes
+        // reverse each item in this.txHashes
         reversedTxHashes = this.txHashes.map(txHash => reverseBuffer(txHash));
       }
     } else {
@@ -133,4 +134,55 @@ export class Block {
     );
     return calculatedMerkleRoot.equals(this.merkleRoot);
   };
+
+  validateWitnessMerkleRoot = (): boolean => {
+    if (this.transactions.length < 1) throw Error("No transactions");
+    if (!this.transactions[0].segwit)
+      throw Error("Coinbase isn't segwit so no witness merkle root");
+    const calculatedWitnessMerkleRoot = this.witnessMerkleRoot();
+
+    // witness commitment is stored in an output of coinbase tx
+    // find which output it is with getWitnessCommitmentIndex.
+    // Actual commitment is from bytes 4 to 36
+    const witnessMerkleRoot = (this.transactions[0].txOuts[
+      getWitnessCommitmentIndex(this)
+    ].scriptPubkey.cmds[1] as PushDataOpcode).data.slice(4);
+    return calculatedWitnessMerkleRoot.equals(witnessMerkleRoot);
+  };
+
+  witnessMerkleRoot = (): Buffer => {
+    if (this.transactions.length < 1) throw Error("No transactions");
+    const leaves = [];
+    leaves.push(Buffer.alloc(32, 0)); // coinbase wtxid assumed to be 0
+    // push witness hash for every transaction after coinbase
+    for (const tx of this.transactions.slice(1)) {
+      leaves.push(tx.witnessHash());
+    }
+    const root = calculateMerkleRoot(leaves);
+    // Double-SHA256(witness root hash|witness reserved value)
+    // Coinbase witness must be single 32-byte array for the witness reserved value
+    return hash256(Buffer.concat([root, Buffer.alloc(32, 0)]));
+  };
 }
+
+// find which output contains witness commitment in coinbase tx from block
+export const getWitnessCommitmentIndex = (block: Block): number => {
+  if (block.transactions.length < 1) throw Error("No coinbase tx to check");
+  // if multiple matches, use one with highest output index so go in
+  // reverse order and return early
+  for (const [i, txOut] of block.transactions[0].txOuts.reverse().entries()) {
+    const scriptPubkey = txOut.scriptPubkey;
+    if (
+      scriptPubkey.rawSerialize().byteLength >= 38 && // TODO: store raw bytes to prevent having to reserialize in many cases
+      scriptPubkey.cmds[0] === Opcode.OP_RETURN &&
+      typeof scriptPubkey.cmds[1] !== "number"
+    ) {
+      const data = (scriptPubkey.cmds[1] as PushDataOpcode).data;
+      // commitment is OP_RETURN <4 byte commitment header = 0xaa21a9ed> <32 byte commitment>
+      if (data.slice(0, 4).equals(Buffer.from("aa21a9ed", "hex"))) {
+        return i;
+      }
+    }
+  }
+  throw Error("No commitment found");
+};
