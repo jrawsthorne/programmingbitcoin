@@ -1,4 +1,10 @@
-import { readVarint, encodeVarint, toBufferLE } from "../helper";
+import {
+  readVarint,
+  encodeVarint,
+  toBufferLE,
+  encodeBase58Checksum,
+  sha256
+} from "../helper";
 import { SmartBuffer } from "smart-buffer";
 import {
   OP_CODE_NAMES,
@@ -11,6 +17,7 @@ import {
   opVerify,
   PushDataOpcode
 } from "./Op";
+import bech32 from "bech32";
 
 export const p2pkhScript = (h160: Buffer): Script => {
   return new Script([
@@ -121,8 +128,6 @@ export class Script {
           cmds.pop(); // know this is OP_EQUAL
           const { data: h160 } = cmds.pop()! as PushDataOpcode; // know this is <hash>
           cmds.pop(); // know this is OP_HASH160
-          const { data: h160 } = cmds.pop()! as PushDataOpcode; // know this is <hash>
-          cmds.pop(); // know this is OP_EQUAL
           // run typical OP_HASH160, push 20 byte hash and OP_EQUAL
           // redeem script is currently on top of stack
           if (!opHash160(stack)) return false;
@@ -346,6 +351,29 @@ export class Script {
       typeof this.cmds[1] !== "number" &&
       (this.cmds[1] as PushDataOpcode).data.byteLength === 32
     );
+  };
+
+  address = (testnet: boolean = false): string => {
+    if (this.isP2PKH()) {
+      const prefix = testnet ? Buffer.alloc(1, 0x6f) : Buffer.alloc(1, 0x00);
+      return encodeBase58Checksum(
+        Buffer.concat([prefix, (this.cmds[2] as PushDataOpcode).data])
+      );
+    } else if (this.isP2SH()) {
+      const prefix = testnet ? Buffer.alloc(1, 0xc4) : Buffer.alloc(1, 0x05);
+      return encodeBase58Checksum(
+        Buffer.concat([prefix, (this.cmds[1] as PushDataOpcode).data])
+      );
+    } else if (this.isP2WPKH() || this.isP2WSH()) {
+      const prefix = testnet ? "tb" : "bc";
+      const words = Buffer.from(
+        bech32.toWords((this.cmds[1] as PushDataOpcode).data)
+      );
+      // bech32 address consists of prefix, wwitness version (0)
+      // and conversion of witness program to base32
+      return bech32.encode(prefix, Buffer.concat([Buffer.alloc(1, 0), words]));
+    }
+    throw Error("Unknown ScriptPubkey");
   };
 
   toString = (): string => {
