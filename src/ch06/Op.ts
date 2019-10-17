@@ -7,13 +7,83 @@ export const op0 = (stack: Stack): boolean => {
   return true;
 };
 
-export const op6 = (stack: Stack): boolean => {
-  stack.push(encodeNum(6));
+export const op1 = (stack: Stack): boolean => {
+  stack.push(encodeNum(1));
   return true;
 };
 
 export const op2 = (stack: Stack): boolean => {
   stack.push(encodeNum(2));
+  return true;
+};
+
+export const op3 = (stack: Stack): boolean => {
+  stack.push(encodeNum(3));
+  return true;
+};
+
+export const op4 = (stack: Stack): boolean => {
+  stack.push(encodeNum(4));
+  return true;
+};
+
+export const op5 = (stack: Stack): boolean => {
+  stack.push(encodeNum(5));
+  return true;
+};
+
+export const op6 = (stack: Stack): boolean => {
+  stack.push(encodeNum(6));
+  return true;
+};
+
+export const op7 = (stack: Stack): boolean => {
+  stack.push(encodeNum(7));
+  return true;
+};
+
+export const op8 = (stack: Stack): boolean => {
+  stack.push(encodeNum(8));
+  return true;
+};
+
+export const op9 = (stack: Stack): boolean => {
+  stack.push(encodeNum(9));
+  return true;
+};
+
+export const op10 = (stack: Stack): boolean => {
+  stack.push(encodeNum(10));
+  return true;
+};
+
+export const op11 = (stack: Stack): boolean => {
+  stack.push(encodeNum(11));
+  return true;
+};
+
+export const op12 = (stack: Stack): boolean => {
+  stack.push(encodeNum(12));
+  return true;
+};
+
+export const op13 = (stack: Stack): boolean => {
+  stack.push(encodeNum(13));
+  return true;
+};
+
+export const op14 = (stack: Stack): boolean => {
+  stack.push(encodeNum(14));
+  return true;
+};
+
+export const op15 = (stack: Stack): boolean => {
+  stack.push(encodeNum(15));
+  return true;
+};
+
+export const op16 = (stack: Stack): boolean => {
+  stack.push(encodeNum(16));
   return true;
 };
 
@@ -251,8 +321,22 @@ type FUNCTIONS = {
 
 export const OP_CODE_FUNCTIONS: FUNCTIONS = {
   0: op0,
+  81: op1,
   82: op2,
+  83: op3,
+  84: op4,
+  85: op5,
   86: op6,
+  87: op7,
+  88: op8,
+  89: op9,
+  90: op10,
+  91: op11,
+  92: op12,
+  93: op13,
+  94: op14,
+  95: op15,
+  96: op16,
   105: opVerify,
   110: op2dup,
   124: opSwap,
@@ -374,16 +458,21 @@ export enum Opcode {
   "OP_0" = 0,
   "OP_PUSHBYTES_1" = 1,
   "OP_PUSHBYTES_20" = 20,
+  "OP_PUSHBYTES_33" = 33,
+  "OP_PUSHBYTES_36" = 36,
+  "OP_PUSHBYTES_72" = 72,
   "OP_PUSHBYTES_75" = 75,
   "OP_PUSHDATA1" = 76,
   "OP_PUSHDATA2" = 77,
   "OP_PUSHDATA4" = 78,
-  "OP_VERNOTIF" = 102,
+  "OP_1" = 81,
   "OP_2" = 82,
   "OP_6" = 86,
   "OP_IF" = 99,
   "OP_NOTIF" = 100,
+  "OP_VERNOTIF" = 102,
   "OP_VERIFY" = 105,
+  "OP_RETURN" = 106,
   "OP_TOALTSTACK" = 107,
   "OP_FROMALTSTACK" = 108,
   "OP_2DUP" = 110,

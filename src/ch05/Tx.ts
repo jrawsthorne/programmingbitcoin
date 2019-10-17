@@ -63,18 +63,18 @@ export class Tx {
     }
     // read witness vector for each input
     for (const input of inputs) {
-        const numItems = readVarint(s);
+      const numItems = readVarint(s);
       const items: Buffer[] = [];
-        for (let i = 0; i < numItems; i++) {
+      for (let i = 0; i < numItems; i++) {
         const itemLength = Number(readVarint(s));
         if (itemLength === 0) {
           items.push(Buffer.alloc(0));
         } else {
           items.push(s.readBuffer(itemLength));
-          }
         }
-      input.witness = items;
       }
+      input.witness = items;
+    }
     const locktime = s.readUInt32LE();
     return new Tx(version, inputs, outputs, locktime, testnet, true);
   };
@@ -301,7 +301,7 @@ export class Tx {
         witness = txIn.witness;
       } else {
         z = await this.sigHash(inputIndex, redeemScript);
-    }
+      }
     } else {
       if (scriptPubkey.isP2WPKH()) {
         z = await this.sigHashBIP143(inputIndex);
