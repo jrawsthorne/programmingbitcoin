@@ -312,7 +312,11 @@ export class SimpleNode extends EventEmitter {
                 this.data.copy(message, 0, start, start + 24 + size);
                 const envelope = NetworkEnvelope.parse(message);
                 if (this.logging) {
-                  console.log(`Receive: ${envelope.toString()}`);
+                  console.log(
+                    `Receive: ${envelope.toString().slice(0, 100)}${
+                      envelope.toString().length > 100 ? "..." : ""
+                    }`
+                  );
                 }
                 this.handleMessage(envelope);
                 this.emit(
@@ -381,7 +385,11 @@ export class SimpleNode extends EventEmitter {
     );
 
     if (this.logging) {
-      console.log(`Sending: ${envelope.toString()}`);
+      console.log(
+        `Sending: ${envelope.toString().slice(0, 100)}${
+          envelope.toString().length > 100 ? "..." : ""
+        }`
+      );
     }
     this.socket.write(envelope.serialize());
   };
