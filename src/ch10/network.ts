@@ -598,9 +598,9 @@ export class HeadersMessage {
     const numHeaders = readVarint(s);
     let blocks: Block[] = [];
     for (let i = 0; i < numHeaders; i++) {
-      blocks.push(Block.parse(s));
-      const numTxs = readVarint(s);
-      if (numTxs !== 0n) {
+      const block = Block.parse(s);
+      blocks.push(block);
+      if (block.transactions.length !== 0) {
         throw Error("Number of txs not 0");
       }
     }
