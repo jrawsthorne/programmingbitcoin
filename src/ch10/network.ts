@@ -421,10 +421,12 @@ export enum InvType {
   MSG_TX = 1,
   MSG_BLOCK = 2,
   MSG_FILTERED_BLOCK = 3,
-  MSG_CMPCT_BLOCK = 4
+  MSG_CMPCT_BLOCK = 4,
+  MSG_WITNESS_TX = 0x40000001,
+  MSG_WITNESS_BLOCK = 0x40000002
 }
 
-class Inv {
+export class Inv {
   constructor(public type: InvType, public hash: Buffer) {}
 
   static parse = (s: SmartBuffer): Inv => {
