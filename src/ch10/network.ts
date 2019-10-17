@@ -251,7 +251,9 @@ export type NetworkMessage =
   | GetHeadersMessage
   | TxMessage
   | GetDataMessage
-  | InvMessage;
+  | InvMessage
+  | GetBlocksMessage
+  | BlockMessage;
 
 export class SimpleNode extends EventEmitter {
   socket: Socket;
@@ -356,15 +358,23 @@ export class SimpleNode extends EventEmitter {
       // only connected to one node so always ask for data
       // when inv received
       const invMessage = InvMessage.parse(message.payload);
+      const blocks: Inv[] = [];
+      const transactions: Inv[] = [];
       for (const inv of invMessage.invs) {
         switch (inv.type) {
-          case InvType.MSG_BLOCK:
+          case InvType.MSG_BLOCK: {
+            blocks.push(inv);
+            break;
+          }
           case InvType.MSG_TX: {
-            this.send(new GetDataMessage([inv]));
+            inv.type = InvType.MSG_WITNESS_TX;
+            transactions.push(inv);
             break;
           }
         }
       }
+      if (blocks.length) this.send(new GetDataMessage(blocks));
+      if (transactions.length) this.send(new GetDataMessage(transactions));
     }
   };
 
@@ -517,11 +527,65 @@ export class TxMessage {
 
   serialize = (): Buffer => this.tx.serialize();
 
-  static parse = (message: Buffer): TxMessage => {
+  static parse = (message: Buffer | SmartBuffer): TxMessage => {
     return new TxMessage(Tx.parse(message));
   };
 
   getCommand = (): Buffer => TxMessage.command;
+}
+
+export class BlockMessage {
+  public static command = Buffer.from("block");
+
+  constructor(public block: Block) {}
+
+  serialize = (): Buffer => this.block.serialize(false);
+
+  static parse = (message: Buffer): BlockMessage => {
+    return new BlockMessage(Block.parse(message));
+  };
+
+  getCommand = (): Buffer => BlockMessage.command;
+}
+
+interface GetBlocksMessageParams {
+  version?: number;
+  hashCount: number;
+  blockLocator: Buffer;
+  hashStop?: Buffer;
+}
+
+export class GetBlocksMessage {
+  public static readonly command = Buffer.from("getblocks");
+  version: number;
+  hashCount: number;
+  blockLocator: Buffer;
+  hashStop: Buffer;
+
+  constructor({
+    version,
+    hashCount,
+    blockLocator,
+    hashStop
+  }: GetBlocksMessageParams) {
+    this.version = version || 70015;
+    this.hashCount = hashCount;
+    this.blockLocator = blockLocator;
+    this.hashStop = hashStop || Buffer.alloc(32, 0x00);
+  }
+
+  public serialize = (): Buffer => {
+    const s = new SmartBuffer();
+
+    s.writeUInt32LE(this.version);
+    s.writeBuffer(encodeVarint(this.hashCount));
+    s.writeBuffer(reverseBuffer(this.blockLocator));
+    s.writeBuffer(reverseBuffer(this.hashStop));
+
+    return s.toBuffer();
+  };
+
+  getCommand = (): Buffer => GetBlocksMessage.command;
 }
 
 export class HeadersMessage {
