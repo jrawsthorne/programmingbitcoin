@@ -10,7 +10,9 @@ import {
   encodeVarint,
   readVarint,
   reverseBuffer,
-  trimBuffer
+  trimBuffer,
+  toBufferLE,
+  toBigIntLE
 } from "../helper";
 import { Socket } from "net";
 import { EventEmitter } from "events";
@@ -74,12 +76,12 @@ export class NetworkEnvelope {
 
 export interface VersionMessageParams {
   version?: number;
-  services?: number;
-  timestamp?: number;
-  receiverServices?: number;
+  services?: bigint;
+  timestamp?: bigint;
+  receiverServices?: bigint;
   receiverIp?: Buffer;
   receiverPort?: number;
-  senderServices?: number;
+  senderServices?: bigint;
   senderIp?: Buffer;
   senderPort?: number;
   nonce?: Buffer;
@@ -91,12 +93,12 @@ export interface VersionMessageParams {
 export class VersionMessage {
   public static readonly command = Buffer.from("version");
   version: number;
-  services: number;
-  timestamp: number;
-  receiverServices: number;
+  services: bigint;
+  timestamp: bigint;
+  receiverServices: bigint;
   receiverIp: Buffer;
   receiverPort: number;
-  senderServices: number;
+  senderServices: bigint;
   senderIp: Buffer;
   senderPort: number;
   nonce: Buffer;
@@ -105,16 +107,16 @@ export class VersionMessage {
   relay: boolean;
   constructor({
     version = 70015,
-    services = 0,
-    timestamp = Math.floor(Date.now() / 1000),
-    receiverServices = 0,
+    services = 0n,
+    timestamp = BigInt(Math.floor(Date.now() / 1000)),
+    receiverServices = 0n,
     receiverIp = Buffer.alloc(4),
     receiverPort = 8333,
-    senderServices = 0,
+    senderServices = 0n,
     senderIp = Buffer.alloc(4),
     senderPort = 8333,
     // randomly generated 8 byte nonce
-    nonce = u64ToEndian(randInt(Number.MAX_SAFE_INTEGER)),
+    nonce = toBufferLE(randInt(Number.MAX_SAFE_INTEGER), 8),
     userAgent = Buffer.from("/programmingbitcoin:0.1/"),
     latestBlock = 0,
     relay = false
@@ -138,12 +140,12 @@ export class VersionMessage {
     const s = new SmartBuffer();
 
     s.writeUInt32LE(this.version);
-    s.writeBuffer(u64ToEndian(this.services));
-    s.writeBuffer(u64ToEndian(this.timestamp));
-    s.writeBuffer(u64ToEndian(this.receiverServices));
+    s.writeBuffer(toBufferLE(this.services, 8));
+    s.writeBuffer(toBufferLE(this.timestamp, 8));
+    s.writeBuffer(toBufferLE(this.receiverServices, 8));
     s.writeBuffer(toIPFormat(this.receiverIp));
     s.writeUInt16BE(this.receiverPort);
-    s.writeBuffer(u64ToEndian(this.senderServices));
+    s.writeBuffer(toBufferLE(this.senderServices, 8));
     s.writeBuffer(toIPFormat(this.senderIp));
     s.writeUInt16BE(this.senderPort);
     s.writeBuffer(this.nonce);
@@ -153,6 +155,39 @@ export class VersionMessage {
     s.writeUInt8(this.relay ? 1 : 0);
 
     return s.toBuffer();
+  };
+
+  static parse = (message: Buffer): VersionMessage => {
+    const s = SmartBuffer.fromBuffer(message);
+    const version = s.readUInt32LE();
+    const services = toBigIntLE(s.readBuffer(8));
+    const timestamp = toBigIntLE(s.readBuffer(8));
+    const receiverServices = toBigIntLE(s.readBuffer(8));
+    const receiverIp = s.readBuffer(16);
+    const receiverPort = s.readUInt16BE();
+    const senderServices = toBigIntLE(s.readBuffer(8));
+    const senderIp = s.readBuffer(16);
+    const senderPort = s.readUInt16BE();
+    const nonce = s.readBuffer(8);
+    const userAgentLength = readVarint(s);
+    const userAgent = s.readBuffer(Number(userAgentLength));
+    const latestBlock = s.readUInt32LE();
+    const relay = s.readUInt8();
+    return new VersionMessage({
+      version,
+      services,
+      timestamp,
+      receiverServices,
+      receiverIp,
+      receiverPort,
+      senderServices,
+      senderIp,
+      senderPort,
+      nonce,
+      userAgent,
+      latestBlock,
+      relay: !!relay
+    });
   };
 
   getCommand = (): Buffer => VersionMessage.command;
@@ -190,8 +225,9 @@ export class PingMessage {
   public static readonly command = Buffer.from("ping");
 
   constructor(
-    public readonly nonce: Buffer = u64ToEndian(
-      randInt(Number.MAX_SAFE_INTEGER)
+    public readonly nonce: Buffer = toBufferLE(
+      randInt(Number.MAX_SAFE_INTEGER),
+      8
     )
   ) {}
 
@@ -436,12 +472,12 @@ export class GetHeadersMessage {
   constructor({
     version = 70015,
     numHashes = 1,
-    endBlock,
+    endBlock = Buffer.alloc(32, 0x00),
     startBlock
   }: GetHeadersMessageParams) {
     this.version = version;
     this.numHashes = numHashes;
-    this.endBlock = endBlock || Buffer.alloc(32, 0x00);
+    this.endBlock = endBlock;
     this.startBlock = startBlock;
   }
 
@@ -449,7 +485,7 @@ export class GetHeadersMessage {
     const s = new SmartBuffer();
 
     s.writeUInt32LE(this.version);
-    s.writeUInt8(this.numHashes);
+    s.writeBuffer(encodeVarint(this.numHashes));
     s.writeBuffer(reverseBuffer(this.startBlock));
     s.writeBuffer(reverseBuffer(this.endBlock));
 
