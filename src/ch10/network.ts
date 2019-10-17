@@ -5,7 +5,6 @@ import { SmartBuffer } from "smart-buffer";
 import {
   hash256,
   randInt,
-  u64ToEndian,
   toIPFormat,
   encodeVarint,
   readVarint,

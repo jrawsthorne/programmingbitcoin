@@ -72,7 +72,7 @@ export class Script {
     return new Script([...this.cmds, ...other.cmds]);
   };
 
-  evaluate = (z: bigint, witness: Buffer[]): boolean => {
+  evaluate = (z: bigint, witness: Buffer[] = []): boolean => {
     const cmds: Cmds = [...this.cmds];
     const stack: Stack = [];
     const altStack: Stack = [];
