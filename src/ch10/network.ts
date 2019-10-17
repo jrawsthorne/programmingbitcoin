@@ -369,9 +369,14 @@ export class SimpleNode extends EventEmitter {
   };
 
   // handshake sends version and expects verack
-  handshake = async (relay: boolean = false): Promise<void> => {
+  handshake = async (
+    versionMessageParams?: VersionMessageParams
+  ): Promise<void> => {
+    if (this.socket.connecting) {
+      await new Promise(resolve => this.socket.once("connect", resolve));
+    }
     return new Promise(resolve => {
-      const version = new VersionMessage({ relay });
+      const version = new VersionMessage(versionMessageParams);
       this.send(version);
       this.once("verackMessage", resolve);
     });
