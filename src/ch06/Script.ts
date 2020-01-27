@@ -43,8 +43,8 @@ export const p2wpkhScript = (h160: Buffer): Script => {
     Opcode.OP_0,
     {
       data: h160,
-      opcode: h160.byteLength,
-      originalLength: h160.byteLength
+      opcode: Opcode.OP_PUSHBYTES_20,
+      originalLength: 20
     }
   ]);
 };
@@ -55,11 +55,26 @@ export const p2wshScript = (s256: Buffer): Script => {
     Opcode.OP_0,
     {
       data: s256,
-      opcode: s256.byteLength,
-      originalLength: s256.byteLength
+      opcode: Opcode.OP_PUSHBYTES_32,
+      originalLength: 32
     }
   ]);
 };
+
+// OP_1 <32-byte x co-ordinate pubkey>
+export const taprootScript = (pubkey: Buffer) => {
+  if (pubkey.byteLength !== 32) {
+    throw Error("invalid pubkey length");
+  }
+  return new Script([
+    Opcode.OP_1,
+    {
+      data: pubkey,
+      opcode: Opcode.OP_PUSHBYTES_32,
+      originalLength: 32
+    }
+  ])
+}
 
 export class Script {
   public cmds: Cmds;

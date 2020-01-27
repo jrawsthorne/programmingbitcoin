@@ -6,7 +6,8 @@ import {
   reverseBuffer,
   toBigIntBE,
   toIntLE,
-  toBufferLE
+  toBufferLE,
+  sha256
 } from "../helper";
 import { TxIn } from "./TxIn";
 import { SmartBuffer } from "smart-buffer";
@@ -14,11 +15,13 @@ import { TxOut } from "./TxOut";
 import { PrivateKey } from "../ch03/PrivateKey";
 import { Script, p2pkhScript } from "../ch06/Script";
 import { PushDataOpcode } from "../ch06/Op";
+import { TxFetcher } from "./TxFetcher";
 
 export class Tx {
   private _hashPrevouts?: Buffer;
   private _hashSequence?: Buffer;
   private _hashOutputs?: Buffer;
+  private _hashAmounts?: Buffer;
   constructor(
     public version: number,
     public txIns: TxIn[],
@@ -26,7 +29,7 @@ export class Tx {
     public locktime: number,
     public testnet: boolean = false,
     public segwit: boolean = false
-  ) {}
+  ) { }
 
   static parseLegacy = (s: SmartBuffer, testnet: boolean = false): Tx => {
     const version = s.readUInt32LE();
@@ -242,6 +245,31 @@ export class Tx {
     return toBigIntBE(hash256(s.toBuffer()));
   };
 
+  // sighash for taproot (no tapscript)
+  // assumes SIGHASH_ALL
+  // gets previous outputs from blockstream.info
+  sigHashSchnorr = async (inputIndex: number): Promise<bigint> => {
+    const txIn = this.txIns[inputIndex];
+    const s = new SmartBuffer();
+
+    s.writeUInt8(0) // EPOCH always 0
+    s.writeUInt8(SIGHASH_ALL); // sighash type
+    s.writeUInt32LE(this.version);
+    s.writeUInt32LE(this.locktime);
+    s.writeBuffer(this.hashPrevouts());
+    s.writeBuffer(await this.hashAmounts());
+    s.writeBuffer(this.hashSequence());
+    s.writeBuffer(this.hashOutputs()); // Assume SIGHASH_ALL
+    s.writeUInt8(0); // spend type = taproot(0) + no annex(0) = 0
+    s.writeBuffer(await (await txIn.scriptPubkey(this.testnet)).serialize());
+    s.writeUInt32LE(inputIndex);
+
+    const tag = sha256(Buffer.from("TapSighash", "utf-8"));
+
+    return toBigIntBE(sha256(Buffer.concat([tag, tag, s.toBuffer()])));
+
+  }
+
   hashPrevouts = (): Buffer => {
     if (!this._hashPrevouts) {
       const allPrevouts = new SmartBuffer();
@@ -274,6 +302,18 @@ export class Tx {
     }
     return this._hashOutputs;
   };
+
+  hashAmounts = async (): Promise<Buffer> => {
+    if (!this._hashAmounts) {
+      const allAmounts = new SmartBuffer();
+      for (const txIn of this.txIns) {
+        let amount = await txIn.value(this.testnet);
+        allAmounts.writeBuffer(toBufferLE(amount, 8));
+      }
+      this._hashAmounts = hash256(allAmounts.toBuffer());
+    }
+    return this._hashAmounts!;
+  }
 
   verifyInput = async (inputIndex: number): Promise<boolean> => {
     const txIn = this.txIns[inputIndex];
