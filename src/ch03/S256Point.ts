@@ -11,6 +11,7 @@ import {
   toBigIntBE
 } from "../helper";
 import secp from "tiny-secp256k1";
+import { taggedHash } from './PrivateKey';
 
 const A = 0n;
 const B = 7n;
@@ -49,6 +50,22 @@ export class S256Point extends ECCPoint {
       return total.x!.num === sig.r;
     }
   };
+
+  schnorrVerify = (z: bigint, sig: Buffer): boolean => {
+    const r = toBigIntBE(sig.slice(0, 32));
+    const s = toBigIntBE(sig.slice(32));
+    if (r >= P || s >= N) {
+      return false;
+    }
+    const msg = toBufferBE(z, 32);
+    const pubkey = toBufferBE(this.x!.num, 32);
+    const e = mod(toBigIntBE(taggedHash("BIPSchnorr", Buffer.concat([sig.slice(0, 32), pubkey, msg]))), N);
+    const R = G.scalarMul(s).add(this.scalarMul(N - e));
+    if (R.isInfinity() || !R.hasSquareY() || R.x!.num !== r) {
+      return false;
+    }
+    return true
+  }
 
   sec = (compressed: boolean = true): Buffer => {
     const s = new SmartBuffer();
@@ -92,6 +109,18 @@ export class S256Point extends ECCPoint {
       ? new S256Point({ x: x.num, y: evenBeta.num })
       : new S256Point({ x: x.num, y: oddBeta.num });
   };
+
+
+  static schnorrParse = (pubkey: Buffer): S256Point => {
+    const x = toBigIntBE(pubkey);
+    const squareY = mod(pow(x, 3n, P) + 7n, P);
+    const y = pow(squareY, (P + 1n) / 4n, P);
+    return new S256Point({ x, y });
+  }
+
+  schnorrSerialize = (): Buffer => {
+    return toBufferBE(this.x!.num, 32);
+  }
 
   hash160 = (compressed: boolean = true): Buffer => {
     return hash160(this.sec(compressed));
