@@ -18,6 +18,7 @@ import {
   PushDataOpcode
 } from "./Op";
 import bech32 from "bech32";
+import { S256Point } from '../ch03/S256Point';
 
 export const p2pkhScript = (h160: Buffer): Script => {
   return new Script([
@@ -181,6 +182,24 @@ export class Script {
             }))
           );
           cmds.push(...p2pkhScript(h160).cmds);
+        }
+
+        // taproot check bip340
+        // structure is:
+        // OP_1 <32-byte-pubkey>
+        if (stack.length === 2 && stack[0].equals(Buffer.from([1])) && stack[1].length === 32) {
+          const pubkeyx = stack.pop()!; // know this is pubkey
+          stack.pop(); // know this is witness version, 1
+          if (witness.length === 0) {
+            return false;
+          }
+          // key path spending
+          if (witness.length === 1) {
+            const sig = witness[0];
+            const pubkey = S256Point.schnorrParse(pubkeyx);
+            const valid = pubkey.schnorrVerify(z, sig);
+            return valid;
+          }
         }
 
         // p2wsh check bip141
@@ -367,6 +386,15 @@ export class Script {
       (this.cmds[1] as PushDataOpcode).data.byteLength === 32
     );
   };
+
+  isP2Taproot = (): boolean => {
+    return (
+      this.cmds.length === 2 &&
+      this.cmds[0] === Opcode.OP_1 &&
+      typeof this.cmds[1] !== "number" &&
+      (this.cmds[1] as PushDataOpcode).data.byteLength === 32
+    );
+  }
 
   address = (testnet: boolean = false): string => {
     if (this.isP2PKH()) {

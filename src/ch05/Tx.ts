@@ -261,7 +261,7 @@ export class Tx {
     s.writeBuffer(this.hashSequence());
     s.writeBuffer(this.hashOutputs()); // Assume SIGHASH_ALL
     s.writeUInt8(0); // spend type = taproot(0) + no annex(0) = 0
-    s.writeBuffer(await (await txIn.scriptPubkey(this.testnet)).serialize());
+    s.writeBuffer((await txIn.scriptPubkey(this.testnet)).serialize());
     s.writeUInt32LE(inputIndex);
 
     const tag = sha256(Buffer.from("TapSighash", "utf-8"));
@@ -353,6 +353,9 @@ export class Tx {
         const witnessScript = Script.parse(SmartBuffer.fromBuffer(rawWitness));
         z = await this.sigHashBIP143(inputIndex, undefined, witnessScript);
         witness = txIn.witness;
+      } else if (scriptPubkey.isP2Taproot()) {
+        z = await this.sigHashSchnorr(inputIndex);
+        witness = txIn.witness;
       } else {
         z = await this.sigHash(inputIndex);
       }
@@ -390,6 +393,13 @@ export class Tx {
     return this.verifyInput(inputIndex);
   };
 
+  schnorrSignInput = async (inputIndex: number, privateKey: PrivateKey): Promise<boolean> => {
+    const z = await this.sigHashSchnorr(inputIndex);
+    const sig = privateKey.schnorrSign(z);
+    this.txIns[inputIndex].witness = [sig];
+    return this.verifyInput(inputIndex);
+  }
+
   // coinbase must have a single input with
   // prevIndex of ffffffff and prevTx of 32 0 bytes
   isCoinbase = (): boolean => {
@@ -419,6 +429,6 @@ export class Tx {
     }
     return `tx: ${this.id()}\nversion: ${
       this.version
-    }\ntx_ins:\n${txIns}tx_outs:\n${txOuts}locktime: ${this.locktime}`;
+      }\ntx_ins:\n${txIns}tx_outs:\n${txOuts}locktime: ${this.locktime}`;
   };
 }
