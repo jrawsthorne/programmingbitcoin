@@ -6,16 +6,14 @@ import {
   reverseBuffer,
   toBigIntBE,
   toIntLE,
-  toBufferLE,
-  sha256
+  toBufferLE
 } from "../helper";
 import { TxIn } from "./TxIn";
 import { SmartBuffer } from "smart-buffer";
 import { TxOut } from "./TxOut";
-import { PrivateKey } from "../ch03/PrivateKey";
+import { PrivateKey, taggedHash } from "../ch03/PrivateKey";
 import { Script, p2pkhScript } from "../ch06/Script";
 import { PushDataOpcode } from "../ch06/Op";
-import { TxFetcher } from "./TxFetcher";
 
 export class Tx {
   private _hashPrevouts?: Buffer;
@@ -264,10 +262,7 @@ export class Tx {
     s.writeBuffer((await txIn.scriptPubkey(this.testnet)).serialize());
     s.writeUInt32LE(inputIndex);
 
-    const tag = sha256(Buffer.from("TapSighash", "utf-8"));
-
-    return toBigIntBE(sha256(Buffer.concat([tag, tag, s.toBuffer()])));
-
+    return toBigIntBE(taggedHash("TapSighash", s.toBuffer()));
   }
 
   hashPrevouts = (): Buffer => {
