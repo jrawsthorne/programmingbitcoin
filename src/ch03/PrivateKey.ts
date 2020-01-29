@@ -6,7 +6,9 @@ import {
   pow,
   decodeBase58Wif,
   toBufferBE,
-  toBigIntBE
+  toBigIntBE,
+  sha256,
+  mod
 } from "../helper";
 import secp from "tiny-secp256k1";
 
@@ -69,6 +71,16 @@ export class PrivateKey {
     return new Signature(r, s);
   };
 
+  schnorrSign = (z: bigint): Buffer => {
+    const secret = this.point.hasSquareY() ? this.secret : N - this.secret;
+    let nonce = this.schnorrNonce(z);
+    const R = G.scalarMul(nonce);
+    nonce = R.hasSquareY() ? nonce : N - nonce;
+    const e = mod(toBigIntBE(taggedHash("BIPSchnorr", Buffer.concat([R.schnorrSerialize(), this.point.schnorrSerialize(), toBufferBE(z, 32)]))), N);
+    const sig = Buffer.concat([toBufferBE(R.x!.num, 32), toBufferBE(mod((nonce + e * secret), N), 32)]);
+    return sig;
+  }
+
   // https://tools.ietf.org/html/rfc6979#section-3.2
   deterministicK = (z: bigint): bigint => {
     let k = Buffer.alloc(32, 0);
@@ -103,7 +115,24 @@ export class PrivateKey {
     }
   };
 
+  // deterministic schnorr nonce
+  schnorrNonce = (z: bigint): bigint => {
+    const secret = this.point.hasSquareY() ? this.secret : N - this.secret;
+    const m = Buffer.concat([toBufferBE(secret, 32), toBufferBE(z, 32)]);
+    const nonceBuffer = taggedHash("BIPSchnorrDerive", m);
+    const nonce = mod(toBigIntBE(nonceBuffer), N);
+    if (nonce === 0n) {
+      throw Error("Couldn't genereate nonce");
+    }
+    return nonce;
+  }
+
   hex = (): string => {
     return this.secret.toString(16).padStart(64, "0");
   };
+}
+
+export function taggedHash(tag: string, msg: Buffer): Buffer {
+  const tagHash = sha256(Buffer.from(tag, "utf8"));
+  return sha256(Buffer.concat([tagHash, tagHash, msg]));
 }
