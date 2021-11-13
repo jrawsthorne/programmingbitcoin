@@ -14,6 +14,7 @@ import { TxOut } from "./TxOut";
 import { PrivateKey, taggedHash } from "../ch03/PrivateKey";
 import { Script, p2pkhScript } from "../ch06/Script";
 import { PushDataOpcode } from "../ch06/Op";
+import crypto from "crypto";
 
 export class Tx {
   private _hashPrevouts?: Buffer;
@@ -388,9 +389,13 @@ export class Tx {
     return this.verifyInput(inputIndex);
   };
 
-  schnorrSignInput = async (inputIndex: number, privateKey: PrivateKey): Promise<boolean> => {
+  schnorrSignInput = async (
+    inputIndex: number,
+    privateKey: PrivateKey
+  ): Promise<boolean> => {
     const z = await this.sigHashSchnorr(inputIndex);
-    const sig = privateKey.schnorrSign(z);
+    const auxRand = crypto.randomBytes(32);
+    const sig = privateKey.schnorrSign(z, auxRand);
     this.txIns[inputIndex].witness = [sig];
     return this.verifyInput(inputIndex);
   }
@@ -424,6 +429,6 @@ export class Tx {
     }
     return `tx: ${this.id()}\nversion: ${
       this.version
-      }\ntx_ins:\n${txIns}tx_outs:\n${txOuts}locktime: ${this.locktime}`;
+    }\ntx_ins:\n${txIns}tx_outs:\n${txOuts}locktime: ${this.locktime}`;
   };
 }

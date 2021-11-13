@@ -47,6 +47,14 @@ export const sha1 = (s: Buffer): Buffer => {
     .digest();
 };
 
+export function XORBytes(first: Buffer, second: Buffer): Buffer {
+  const output = Buffer.alloc(first.length);
+  for (let i = 0; i < first.length; i++) {
+    output[i] = first[i] ^ second[i];
+  }
+  return output;
+}
+
 // reverse buffer byte order
 export const reverseBuffer = (buffer: Buffer): Buffer => {
   const reversed = Buffer.alloc(buffer.byteLength);

@@ -1,6 +1,4 @@
 import { FieldElement } from "../ch01/Field";
-import { pow } from "../helper";
-import { P } from "./S256Field";
 
 export class ECCPoint {
   constructor(
@@ -36,8 +34,8 @@ export class ECCPoint {
     return new ECCPoint(undefined, undefined, this.a, this.b);
   };
 
-  hasSquareY(): boolean {
-    return pow(this.y!.num, (P - 1n) / 2n, P) === 1n;
+  hasEvenY(): boolean {
+    return this.y!.num % 2n === 0n;
   }
 
   equals = (other: ECCPoint): boolean => {

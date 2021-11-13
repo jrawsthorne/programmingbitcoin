@@ -59,9 +59,17 @@ export class S256Point extends ECCPoint {
     }
     const msg = toBufferBE(z, 32);
     const pubkey = toBufferBE(this.x!.num, 32);
-    const e = mod(toBigIntBE(taggedHash("BIPSchnorr", Buffer.concat([sig.slice(0, 32), pubkey, msg]))), N);
+    const e = mod(
+      toBigIntBE(
+        taggedHash(
+          "BIP0340/challenge",
+          Buffer.concat([sig.slice(0, 32), pubkey, msg])
+        )
+      ),
+      N
+    );
     const R = G.scalarMul(s).add(this.scalarMul(N - e));
-    if (R.isInfinity() || !R.hasSquareY() || R.x!.num !== r) {
+    if (R.isInfinity() || !R.hasEvenY() || R.x!.num !== r) {
       return false;
     }
     return true
@@ -110,13 +118,13 @@ export class S256Point extends ECCPoint {
       : new S256Point({ x: x.num, y: oddBeta.num });
   };
 
-
+  // even y used as tie breaker
   static schnorrParse = (pubkey: Buffer): S256Point => {
     const x = toBigIntBE(pubkey);
     const squareY = mod(pow(x, 3n, P) + 7n, P);
     const y = pow(squareY, (P + 1n) / 4n, P);
-    return new S256Point({ x, y });
-  }
+    return new S256Point({ x, y: y % 2n === 0n ? y : P - y });
+  };
 
   schnorrSerialize = (): Buffer => {
     return toBufferBE(this.x!.num, 32);

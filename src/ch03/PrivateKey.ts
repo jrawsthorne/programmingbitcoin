@@ -8,7 +8,8 @@ import {
   toBufferBE,
   toBigIntBE,
   sha256,
-  mod
+  mod,
+  XORBytes
 } from "../helper";
 import secp from "tiny-secp256k1";
 
@@ -71,13 +72,32 @@ export class PrivateKey {
     return new Signature(r, s);
   };
 
-  schnorrSign = (z: bigint): Buffer => {
-    const secret = this.point.hasSquareY() ? this.secret : N - this.secret;
-    let nonce = this.schnorrNonce(z);
-    const R = G.scalarMul(nonce);
-    nonce = R.hasSquareY() ? nonce : N - nonce;
-    const e = mod(toBigIntBE(taggedHash("BIPSchnorr", Buffer.concat([R.schnorrSerialize(), this.point.schnorrSerialize(), toBufferBE(z, 32)]))), N);
-    const sig = Buffer.concat([toBufferBE(R.x!.num, 32), toBufferBE(mod((nonce + e * secret), N), 32)]);
+  schnorrSign(z: bigint, auxRand: Buffer): Buffer {
+    if (auxRand.byteLength != 32) {
+      throw Error("auxRand must be 32 bytes")
+    }
+    const d = this.point.hasEvenY() ? this.secret : N -  this.secret;
+    const t = XORBytes(toBufferBE(d, 32), taggedHash("BIP0340/aux", auxRand));
+    const k0 = mod(toBigIntBE(taggedHash("BIP0340/nonce", Buffer.concat([t, this.point.schnorrSerialize(), toBufferBE(z, 32)]))), N);
+    const R = G.scalarMul(k0);
+    const k = R.hasEvenY() ? k0 : N - k0;
+    const e = mod(
+      toBigIntBE(
+        taggedHash(
+          "BIP0340/challenge",
+          Buffer.concat([
+            R.schnorrSerialize(),
+            this.point.schnorrSerialize(),
+            toBufferBE(z, 32),
+          ])
+        )
+      ),
+      N
+    );
+    const sig = Buffer.concat([
+      R.schnorrSerialize(),
+      toBufferBE(mod(k + e * d, N), 32),
+    ]);
     return sig;
   }
 
@@ -115,17 +135,6 @@ export class PrivateKey {
     }
   };
 
-  // deterministic schnorr nonce
-  schnorrNonce = (z: bigint): bigint => {
-    const secret = this.point.hasSquareY() ? this.secret : N - this.secret;
-    const m = Buffer.concat([toBufferBE(secret, 32), toBufferBE(z, 32)]);
-    const nonceBuffer = taggedHash("BIPSchnorrDerive", m);
-    const nonce = mod(toBigIntBE(nonceBuffer), N);
-    if (nonce === 0n) {
-      throw Error("Couldn't genereate nonce");
-    }
-    return nonce;
-  }
 
   hex = (): string => {
     return this.secret.toString(16).padStart(64, "0");
